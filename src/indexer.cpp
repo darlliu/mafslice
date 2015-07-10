@@ -27,8 +27,10 @@ bool seqdb::import (const std::string& dirname)
 
         if (!is_directory(it->path()))
         {
-            std::cout << "found file : " << it->path().string()<< std::endl;
-            fps.push_back(it->path().string());
+            auto fp = it->path().string();
+            if (fp.find(".fa")==std::string::npos) continue;
+            std::cout << "Found fasta file : " << fp << std::endl;
+            fps.push_back(fp);
             fns.push_back(it->path().filename());
 
         }
@@ -50,15 +52,18 @@ bool seqdb::import (const std::string& dirname)
         auto chr = chrs[i];
         set_chr(chr);
         auto chrp = fps[i];
-        import_chr(chrp);
+        fapaths [chr] = chrp;
+        auto dbp = dbpath+"/"+chr+".kch";
+        dbpaths [chr] = dbp;
+        import_chr(chrp, dbp);
     }
     return true;
 };
 
-bool seqdb::import_chr(const std::string & chrfp)
+void seqdb::import_chr(const std::string & chrfp, const std::string& dbp)
 {
     auto db = dbs[chr];
-    if (!db->open(dbpath+"/"+chr+".kch", kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
+    if (!db->open(dbp, kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
     {
         std::cerr << "open error: " << db->error().name() << std::endl;
     }
@@ -85,16 +90,18 @@ bool seqdb::import_chr(const std::string & chrfp)
     idx+= tmp.size();
     std::cout << "Loaded length "<<idx<<std::endl;
     sizes[chr] = idx;
-    return true;
+    return;
 };
 
 void seqdb::init_db (const std::vector<std::string>& chrs)
 {
+    if (init) close_db();
     std::cout << "Initializing DBs, length: " <<chrs.size() <<std::endl;
     for (auto chr: chrs)
     {
         dbs[chr]=std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
     }
+    init = true;
     return;
 };
 
@@ -106,7 +113,7 @@ std::string seqdb::get(const unsigned long& l, const unsigned long& r)
         std::cerr << "Index for slice is incorrect"<< std::endl;
         return "";
     }
-    auto idx = (l/chunksz) * chunksz; //integer division on chunksz
+    auto idx = get_index(l); //integer division on chunksz
     auto idx0 = idx;
     auto db = dbs[chr];
     std::string val(""), tmp;
@@ -114,7 +121,8 @@ std::string seqdb::get(const unsigned long& l, const unsigned long& r)
     {
         if (!db->get(std::to_string(idx),&tmp))
         {
-            std::cerr << "Get Error : " << db->error().name() << " On : "<< chr << std::to_string(idx) << std::endl;
+            std::cerr << "Get Error : " << db->error().name() \
+                << " On : "<< chr << std::to_string(idx) << std::endl;
             return "";
         }
         val += tmp;
@@ -123,4 +131,42 @@ std::string seqdb::get(const unsigned long& l, const unsigned long& r)
     while (r > idx);
     return val.substr(l-idx0, r-l);
 
-}
+};
+
+bool seqdb::export_db(const std::string& fp )
+{
+    std::cerr << "Trying to serialize into "<<fp <<std::endl;
+    std::ofstream ofs (fp);
+    if (!ofs.is_open())
+    {
+        std::cerr << "Error opening file! "<<std::endl;
+        return false;
+    }
+    OARCHIVE ar(ofs);
+    ar << BOOST_SERIALIZATION_NVP(*this);
+    return true;
+};
+
+bool seqdb::load_db(const std::string& fp )
+{
+    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
+    std::ifstream ifs (fp);
+    if (!ifs.is_open())
+    {
+        std::cerr << "Error opening file: "<<fp <<std::endl;
+        return false;
+    }
+    IARCHIVE ar(ifs);
+    ar >> BOOST_SERIALIZATION_NVP(*this);
+    for (auto it:dbpaths)
+    {
+        auto db = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
+        if (!db->open(it.second, kyotocabinet::HashDB::OREADER))
+        {
+            std::cerr << "open error: " << db->error().name() << std::endl;
+            return false;
+        }
+        dbs[it.first]=db;
+    }
+    return true;
+};
