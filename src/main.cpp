@@ -64,7 +64,7 @@ int main (int ac, char** av){
             std::cerr << "Test Get: " << s.get(4e6+9900,4e6+10400) << std::endl;
             std::cerr << "Test Get: " << s.get(4e6+900,4e6+1400) << std::endl;
             if (s.export_db("./db.cfg"))
-                std::cerr << "Test export Sucess! " <<std::endl;
+                std::cerr << "Test export Success! " <<std::endl;
             else
                 std::cerr << "Test export Fail!! " <<std::endl;
             return 0;

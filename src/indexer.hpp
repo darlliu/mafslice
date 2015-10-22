@@ -51,15 +51,15 @@ class seqdb {
         void import_chr(const std::string&, const std::string&);
         //import a chromosome file
 
-        virtual std::string get (const std::string& chr,
+        std::string get3 (const std::string& chr,
                 const int& l, const int& r)
         {
             this->set_chr(chr);
             return this->get(l,r);
         };
 
-        virtual std::string get (const unsigned long&, const unsigned long&);
-        virtual std::string get (const std::string& key) {return "";};
+        std::string get (const unsigned long&, const unsigned long&);
+        std::string get (const std::string& key) {return "";};
 
         void init_db(const std::vector<std::string>&);
         void close_db(){
