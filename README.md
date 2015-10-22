@@ -16,7 +16,7 @@ The workflow is as follows:
 1. Refer to compile.sh for how to compile dynamic libraries. 
     Important: Link as much as possible into the .so NOT later when compiling the python library.
 
-2. Then edit Jamroot and boost-build.jam accordingly. Note: \<token\>VAL does not tolerate whitespace inbetween.
+2. Then edit Jamroot and boost-build.jam accordingly. Note: `<TOKEN>VAL` does not tolerate whitespace inbetween.
 
 3. The structure is always cpp code -> .so (linking all necessary boost and other libraries) -> python adaptor (as simple as possible) -> python .so
 
