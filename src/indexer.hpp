@@ -36,10 +36,10 @@ class seqdb {
 #endif
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
-        seqdb (const std::string & name, const unsigned long& sz,
+        seqdb (const std::string & name, const unsigned long& sz, const std::string& dbp = "./test",
                 const INDEXTYPE& idxtype=increment, const DBTYPE& dbtype=hash):
             name (name), chunksz(sz), indextype(idxtype), dbtype(dbtype),
-            dbpath("./test"), chr(""){};
+            dbpath(dbp), chr(""){};
         seqdb(): seqdb("default", 1e4) {};
         ~seqdb()
         {

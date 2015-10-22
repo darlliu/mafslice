@@ -31,7 +31,7 @@ bool seqdb::import (const std::string& dirname)
             if (fp.find(".fa")==std::string::npos) continue;
             std::cout << "Found fasta file : " << fp << std::endl;
             fps.push_back(fp);
-            fns.push_back(it->path().filename());
+            fns.push_back(it->path().filename().string());
 
         }
         else
