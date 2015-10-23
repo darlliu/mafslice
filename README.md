@@ -7,7 +7,7 @@ multiple genome alignment database with index based access
 * Python binding for the library
 
 
-## Notes on compiling
+## Notes on compiling (Manual)
 
 The workflow is as follows:
 
@@ -19,4 +19,13 @@ The workflow is as follows:
 2. Then edit Jamroot and boost-build.jam accordingly. Note: `<TOKEN>VAL` does not tolerate whitespace inbetween.
 
 3. The structure is always cpp code -> .so (linking all necessary boost and other libraries) -> python adaptor (as simple as possible) -> python .so
+
+### Alternative (cmake)
+
+0. Set up paths in cmake (refer to `build/CMakeLists.txt`) including boost path (whole build with sources), python paths (2.7.10+), kyotocabinet path, correct gcc etc
+
+1. in `build/` do `cmake CMakeLists && make`
+
+2. go to `bin/` to find the libraries. Note: runtime environments must bs set correctly
+
 
