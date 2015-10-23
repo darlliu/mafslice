@@ -31,3 +31,5 @@
 test/*
 package/*
 python/*
+bin/*
+build/*
