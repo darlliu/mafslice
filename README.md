@@ -22,10 +22,10 @@ The workflow is as follows:
 
 ### Alternative (cmake)
 
+**NOTE**: This method links libraries slightly more messily. Don't know how to clean up yet but it still works.
+
 0. Set up paths in cmake (refer to `build/CMakeLists.txt`) including boost path (whole build with sources), python paths (2.7.10+), kyotocabinet path, correct gcc etc
 
 1. in `build/` do `cmake CMakeLists && make`
 
 2. go to `bin/` to find the libraries. Note: runtime environments must bs set correctly
-
-
