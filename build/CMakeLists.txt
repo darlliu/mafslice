@@ -32,10 +32,11 @@ LINK_DIRECTORIES(
 
 
 message("Configuring core C++ binaries")
-add_library(seqindexer SHARED ${SOURCE_DIR}/indexer.cpp)
-target_link_libraries(seqindexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
+add_library(indexer SHARED ${SOURCE_DIR}/indexer.cpp ${SOURCE_DIR}/mafindexer.cpp)
+target_link_libraries(indexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
+
 add_executable(mafslice.exe ${SOURCE_DIR}/main.cpp)
-target_link_libraries(mafslice.exe seqindexer boost_program_options)
+target_link_libraries(mafslice.exe indexer boost_program_options)
 FIND_PACKAGE(Boost 1.59.0)
 FIND_PACKAGE(PythonLibs 2.7.10)
 IF(Boost_FOUND AND PYTHONLIBS_FOUND)
@@ -47,7 +48,7 @@ IF(Boost_FOUND AND PYTHONLIBS_FOUND)
     SET(Boost_USE_STATIC_RUNTIME OFF)
     FIND_PACKAGE(Boost 1.59.0 COMPONENTS python)
     add_library(mafslice SHARED ${SOURCE_DIR}/mafslice.cpp)
-    target_link_libraries(mafslice seqindexer ${Boost_LIBRARIES} )
+    target_link_libraries(mafslice indexer ${Boost_LIBRARIES} )
     set_target_properties(mafslice PROPERTIES PREFIX "" )
 ELSE()
     message("Error finding boost...")

@@ -18,13 +18,13 @@ typedef enum {
 typedef enum {
     increment=0,
     custom
-} INDEXTYPE;
+} INDEXTYPE; //these are optional identifiers left unused for now
 
 class seqdb {
     typedef std::vector<long> INDICES;
     typedef std::map<std::string, INDICES> INDEXMAP;
     typedef std::map<std::string, std::string> NAMES;
-    typedef std::map<std::string, unsigned long> SIZES;
+    typedef std::map<std::string, size_t> SIZES;
     typedef std::map<std::string, std::shared_ptr<kyotocabinet::HashDB>> DB;
     typedef std::map<std::string, std::shared_ptr<kyotocabinet::TreeDB>> DBT;
 #if USE_BINARY_ARCHIVE
@@ -36,7 +36,7 @@ class seqdb {
 #endif
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
-        seqdb (const std::string & name, const unsigned long& sz, const std::string& dbp = "./test",
+        seqdb (const std::string & name, const size_t& sz, const std::string& dbp = "./test",
                 const INDEXTYPE& idxtype=increment, const DBTYPE& dbtype=hash):
             name (name), chunksz(sz), indextype(idxtype), dbtype(dbtype),
             dbpath(dbp), chr(""){};
@@ -45,22 +45,23 @@ class seqdb {
         {
             close_db();
         };
-
         virtual bool import (const std::string&);
         //import from a fasta file and build a db
         void import_chr(const std::string&, const std::string&);
         //import a chromosome file
-
         std::string get3 (const std::string& chr,
-                const int& l, const int& r)
+                const size_t& l, const size_t& r)
+        {
+            return this->get(chr, l,r);//this is an adaptor for python extension
+        };
+        virtual std::string get (const std::string& chr,
+                const size_t& l, const size_t& r)
         {
             this->set_chr(chr);
             return this->get(l,r);
         };
-
-        std::string get (const unsigned long&, const unsigned long&);
-        std::string get (const std::string& key) {return "";};
-
+        virtual std::string get (const size_t&, const size_t&);
+        virtual std::string get (const std::string& key) {return "";};
         void init_db(const std::vector<std::string>&);
         void close_db(){
             for (auto it=dbs.begin(); it!=dbs.end();++it)
@@ -71,7 +72,7 @@ class seqdb {
         void set_chr (const std::string& c) {chr = c;} ;
         void set(const std::string&, const std::string & );
         void del(const std::string&);
-        virtual unsigned long get_index(const unsigned long& idx ) {return idx/chunksz * chunksz;};
+        virtual size_t get_index(const size_t& idx ) {return idx/chunksz * chunksz;};
         template <class archive>
             void serialize(archive & ar, const unsigned ver)
             {
@@ -86,12 +87,12 @@ class seqdb {
                 ar & dbpaths;
                 //we cannot serialize the dbs -- they have to be loaded in load_db!
             };
-        unsigned long chunk_sz(){return chunksz;};
+        size_t chunk_sz(){return chunksz;};
 
 
     private:
         std::string name, dbpath; //name of the db and the directory path for kyotocabinet
-        unsigned long chunksz; //size of each chunk of sequence
+        size_t chunksz; //size of each chunk of sequence
         DBTYPE dbtype; // type of db to be intialized -> only affects db construction
         std::string chr;
         INDEXTYPE indextype;

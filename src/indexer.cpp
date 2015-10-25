@@ -67,7 +67,7 @@ void seqdb::import_chr(const std::string & chrfp, const std::string& dbp)
     {
         std::cerr << "open error: " << db->error().name() << std::endl;
     }
-    unsigned long idx = 0;
+    size_t idx = 0;
     std::ifstream ifs (chrfp);
     std::string tmp="",line;
     if (!ifs.is_open()) throw("Error Opening file!");
@@ -105,7 +105,7 @@ void seqdb::init_db (const std::vector<std::string>& chrs)
     return;
 };
 
-std::string seqdb::get(const unsigned long& l, const unsigned long& r)
+std::string seqdb::get(const size_t& l, const size_t& r)
 {
     //First, check the sizes and make sure that the
     if (r<=l || r >= sizes[chr])
