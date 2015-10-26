@@ -46,7 +46,7 @@ bool seqdb::import (const std::string& dirname)
         boost::replace_last (fn, ".fasta","");
         chrs.push_back(fn);
     }
-    init_db(chrs);
+    init_db(chrs, dbs);
     for (unsigned i =0; i < fps.size(); ++i)
     {
         auto chr = chrs[i];
@@ -55,13 +55,15 @@ bool seqdb::import (const std::string& dirname)
         fapaths [chr] = chrp;
         auto dbp = dbpath+"/"+chr+".kch";
         dbpaths [chr] = dbp;
-        import_chr(chrp, dbp);
+        import_chr();
     }
     return true;
 };
 
-void seqdb::import_chr(const std::string & chrfp, const std::string& dbp)
+void seqdb::import_chr()
 {
+    auto chrfp = fapaths[chr];
+    auto dbp = dbpaths[chr];
     auto db = dbs[chr];
     if (!db->open(dbp, kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
     {
@@ -93,15 +95,14 @@ void seqdb::import_chr(const std::string & chrfp, const std::string& dbp)
     return;
 };
 
-void seqdb::init_db (const std::vector<std::string>& chrs)
+void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
 {
-    if (init) close_db();
+    if (dbs.size()>0) close_db(dbs);
     std::cout << "Initializing DBs, length: " <<chrs.size() <<std::endl;
     for (auto chr: chrs)
     {
         dbs[chr]=std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
     }
-    init = true;
     return;
 };
 

@@ -11,6 +11,20 @@
 #define INDEXER
 #include "base.hpp"
 
+typedef std::vector<size_t> INDICES;
+typedef std::map<std::string, INDICES> INDEXMAP;
+typedef std::map<std::string, std::string> NAMES;
+typedef std::map<std::string, size_t> SIZES;
+typedef std::map<std::string, std::shared_ptr<kyotocabinet::HashDB>> DB;
+typedef std::map<std::string, std::shared_ptr<kyotocabinet::TreeDB>> DBT;
+#if USE_BINARY_ARCHIVE
+typedef boost::archive::binary_oarchive OARCHIVE;
+typedef boost::archive::binary_iarchive IARCHIVE;
+#else
+typedef boost::archive::text_oarchive OARCHIVE;
+typedef boost::archive::text_iarchive IARCHIVE;
+#endif
+
 typedef enum {
     hash = 0,
     tree
@@ -21,19 +35,6 @@ typedef enum {
 } INDEXTYPE; //these are optional identifiers left unused for now
 
 class seqdb {
-    typedef std::vector<long> INDICES;
-    typedef std::map<std::string, INDICES> INDEXMAP;
-    typedef std::map<std::string, std::string> NAMES;
-    typedef std::map<std::string, size_t> SIZES;
-    typedef std::map<std::string, std::shared_ptr<kyotocabinet::HashDB>> DB;
-    typedef std::map<std::string, std::shared_ptr<kyotocabinet::TreeDB>> DBT;
-#if USE_BINARY_ARCHIVE
-    typedef boost::archive::binary_oarchive OARCHIVE;
-    typedef boost::archive::binary_iarchive IARCHIVE;
-#else
-    typedef boost::archive::text_oarchive OARCHIVE;
-    typedef boost::archive::text_iarchive IARCHIVE;
-#endif
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
         seqdb (const std::string & name, const size_t& sz, const std::string& dbp = "./test",
@@ -43,11 +44,11 @@ class seqdb {
         seqdb(): seqdb("default", 1e4) {};
         ~seqdb()
         {
-            close_db();
+            close_db(dbs);
         };
         virtual bool import (const std::string&);
         //import from a fasta file and build a db
-        void import_chr(const std::string&, const std::string&);
+        virtual void import_chr();
         //import a chromosome file
         std::string get3 (const std::string& chr,
                 const size_t& l, const size_t& r)
@@ -62,10 +63,11 @@ class seqdb {
         };
         virtual std::string get (const size_t&, const size_t&);
         virtual std::string get (const std::string& key) {return "";};
-        void init_db(const std::vector<std::string>&);
-        void close_db(){
+        void init_db(const std::vector<std::string>&, DB&);
+        void close_db(DB& dbs){
             for (auto it=dbs.begin(); it!=dbs.end();++it)
                 it->second->close();
+            dbs.clear();
         };
         virtual bool load_db(const std::string &);
         virtual bool export_db(const std::string &);
@@ -90,17 +92,16 @@ class seqdb {
         size_t chunk_sz(){return chunksz;};
 
 
-    private:
+    protected:
         std::string name, dbpath; //name of the db and the directory path for kyotocabinet
         size_t chunksz; //size of each chunk of sequence
         DBTYPE dbtype; // type of db to be intialized -> only affects db construction
         std::string chr;
         INDEXTYPE indextype;
         INDEXMAP indices;
+        DB dbs;
         SIZES sizes;
         NAMES fapaths, dbpaths;
-        bool init=false;
-        DB dbs;
 };
 
 #endif
