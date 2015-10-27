@@ -6,7 +6,7 @@ bool mafdb::import (const std::string& dirname)
 {
     using namespace boost::filesystem;
     auto fp = path (dirname);
-    std::vector<std::string> fps, fns, chrs;
+    std::vector<std::string> fps, fns;
     try
     {
         if (exists(fp) && is_directory(fp))
@@ -96,11 +96,11 @@ void mafdb::import_chr ()
         if (line.size()==0 || line[0]=='#') continue;
         if (line[0]=='a'){
             if (tmp.size()>0){
-                db2->set(std::to_string(rstart)+","+std::to_string(rend)+","+std::to_string(score),
-                        tmp);
-                if (idx % 20 == 0){
-                    std::cerr << "Storing index info "<<rstart<<","<<rend<<":"<<tmp<<std::endl;
-                }
+                db2->set(std::to_string(rstart)+","+std::to_string(rend),
+                        std::to_string(score)+":"+tmp);
+                //if (idx % 50 == 0){
+                    //std::cerr << "Storing index info "<<rstart<<","<<rend<<":"<<tmp<<std::endl;
+                //}
                 idx++;
             }
             //saving routine in here
@@ -112,10 +112,10 @@ void mafdb::import_chr ()
             ss >> foo;
             ss >> foo;
             ss >> score;
-            if (idx % 20 == 0){
-                std::cerr <<"Line is " << line << std::endl;
-                std::cerr << "Storing score info "<<foo<<":"<<score<<std::endl;
-            }
+            //if (idx % 50 == 0){
+                //std::cerr <<"Line is " << line << std::endl;
+                //std::cerr << "Storing score info "<<foo<<":"<<score<<std::endl;
+            //}
         } else if (line[0]=='i') {
             continue;
         } else if (line[0]=='s') {
@@ -129,22 +129,24 @@ void mafdb::import_chr ()
             ss >> sign;
             ss >> len;
             ss >> seq;
-            if (species == ref){
+            if (species.find(ref)!=std::string::npos){
                 rstart = start;
-                rend = start+end;
+                rend = end;
                 rseq = seq;
-                auto hs = hasher (species, rstart, rend);
-                db->set(std::to_string(hs), sign+seq);
+                //auto hs = hasher (species, rstart, rend);
+                auto hs = species + std::to_string(start)+std::to_string(end);
+                db->set(hs, sign+seq);
             } else {
                 if (tmp.size()>0) tmp+="|";
                 tmp += species+","+std::to_string(start) + "," + std::to_string(end);
-                end += start;
-                auto hs = hasher (species, start, end);
-                db->set(std::to_string(hs), sign+seq);
-                if (idx % 20 == 0){
-                    std::cerr <<"Line is " << line << std::endl;
-                    std::cerr << "Storing seq info "<<foo<<":"<<species<<":"<<start<<":"<<end<<","<<sign<<","<<len<<":"<<seq<<std::endl;
-                }
+                //end += start;
+                //auto hs = hasher (species, start, end);
+                auto hs = species + std::to_string(start)+std::to_string(end);
+                db->set(hs, sign+seq);
+                //if (idx % 50 == 0){
+                    //std::cerr <<"Line is " << line << std::endl;
+                    //std::cerr << "Storing seq info "<<foo<<":"<<species<<":"<<start<<":"<<end<<","<<sign<<","<<len<<":"<<seq<<std::endl;
+                //}
             }
         } else continue;
     }
@@ -153,38 +155,112 @@ void mafdb::import_chr ()
     sizes[chr] = idx;
     return;
 }
-size_t mafdb::get_index(const size_t& idx )
+void mafdb::clear_index(const std::string& chr)
 {
-
+    auto msa = msatrees[chr];
+    msa->clear();
+    //for (auto it=msa->begin(); it!=msa->end(); ++it)
+    //{
+        //msa->erase(it);
+    //}
+    return;
 }
-//get the index for the content db from a size_t index
-//
-void mafdb::save_index(const std::string& dbname)
+void mafdb::load_index(const std::string& chr)
 {
+    std::cerr << "Trying to initiate MSA on "<<chr<<std::endl;
+    size_t cnt = 0, l, r;
+    std::string key, val;
+    auto db = dbs2[chr];
+    auto cur = db->cursor();
+    cur->jump();
+    auto msad = msadata[chr];
+    auto msa = msatrees[chr];
+    std::stringstream ss;
+    while (cur->get(&key, &val, true)){
+        boost::replace_last(key,","," ");
+        ss.clear();
+        ss.str(key);
+        ss >> l;
+        ss >> r;
+        auto ii = inode(l, l+r);
+        msad->push_back(ii) ;
+        cnt++;
+    } ;
+    delete cur;
+    for (auto it = msad->begin(); it!=msad->end();++it) msa->insert(*it);
+    std::cerr << "Finished inserting, last record:"<<l<<","<<r<<std::endl;
+    std::cerr <<cnt<<" records"<<std::endl;
+    auto it = msa->lower_bound(inode(1000,1050));
+    if (it!=msa->end())
+        std::cerr << "Trying to find a record >1000, 1050 :"<<it->l<<","<<it->r<<":"<<it->score<<std::endl;
+    return;
 }
-void mafdb::load_index(const std::string& dbname)
+void mafdb::init_tree()
 {
-
+    size_t sz_all=0;
+    std::cerr << "Trying to initialize AMSet for MSA" << std::endl;
+    for (auto &chr: chrs){
+        auto sz= sizes[chr];
+        sz_all+=sz;
+        msadata[chr]=std::shared_ptr <std::vector<inode>> (new std::vector<inode>);
+        msadata[chr]->reserve(sz);
+        msatrees[chr]=std::shared_ptr <AMSet> (new AMSet);
+        load_index(chr);
+    }
+    return;
 }
-void mafdb::init_tree(const std::string& dbname)
+bool mafdb::load_db (const std::string & fp)
 {
-
+    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
+    std::ifstream ifs (fp);
+    if (!ifs.is_open())
+    {
+        std::cerr << "Error opening file: "<<fp <<std::endl;
+        return false;
+    }
+    IARCHIVE ar(ifs);
+    ar >> BOOST_SERIALIZATION_NVP(*this);
+    for (auto it:dbpaths)
+    {
+        auto db = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
+        if (!db->open(it.second, kyotocabinet::HashDB::OREADER))
+        {
+            std::cerr << "open error: " << db->error().name() << std::endl;
+            return false;
+        }
+        dbs[it.first]=db;
+    }
+    for (auto it:dbpaths2)
+    {
+        auto db2 = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
+        if (!db2->open(it.second, kyotocabinet::HashDB::OREADER))
+        {
+            std::cerr << "open error: " << db2->error().name() << std::endl;
+            return false;
+        }
+        dbs2[it.first]=db2;
+    }
+    init_tree();
+    return true;
 }
-bool mafdb::load_db (const std::string & dbname)
+bool mafdb::export_db(const std::string& fp )
 {
-
-}
-bool mafdb::export_db (const std::string & dbname)
-{
-
-}
+    std::cerr << "Trying to serialize into "<<fp <<std::endl;
+    std::ofstream ofs (fp);
+    if (!ofs.is_open())
+    {
+        std::cerr << "Error opening file! "<<std::endl;
+        return false;
+    }
+    OARCHIVE ar(ofs);
+    ar << BOOST_SERIALIZATION_NVP(*this);
+    return true;
+};
 std::string mafdb::get(const size_t& l , const size_t& r)
 {
-
 }
 std::string mafdb::get(const std::string& key)
 {
-
 }
 // get the content from index
 

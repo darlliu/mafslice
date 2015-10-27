@@ -81,7 +81,7 @@ class seqdb {
                 ar & name;
                 ar & dbpath;
                 ar & chunksz;
-                ar & chr;
+                ar & chrs;
                 ar & indextype;
                 ar & indices;
                 ar & sizes;
@@ -97,6 +97,7 @@ class seqdb {
         size_t chunksz; //size of each chunk of sequence
         DBTYPE dbtype; // type of db to be intialized -> only affects db construction
         std::string chr;
+        std::vector<std::string> chrs;
         INDEXTYPE indextype;
         INDEXMAP indices;
         DB dbs;

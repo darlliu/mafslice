@@ -20,18 +20,16 @@
 using namespace boost::intrusive;
 class inode :public avl_set_base_hook < optimize_size <true> >
 {
-    size_t hash;
-    size_t l,r;
-    float score;
-    boost::container::flat_map <std::string, size_t> hashes;
+    //size_t hash;
+
     public:
+        size_t l,r;
+        float score;
         avl_set_member_hook<> member_hook_;
         inode (const size_t& ll,
                const size_t& rr,
-               const size_t & h,
-               bool neg=false):
-            l(ll), r(rr), score(0)  {};
-        auto operator[](const std::string& key){return hashes[key]; };
+               float sc=-1):
+            l(ll), r(rr), score(sc)  {};
         friend bool operator < (const inode& l, const inode& r)
         {
             if (l.l == r.l)
@@ -57,15 +55,21 @@ typedef avl_set <inode, compare<std::greater<inode>>> ASet;
 typedef member_hook <inode, avl_set_member_hook<>, &inode::member_hook_> MemberOption;
 typedef avl_multiset <inode, MemberOption> AMSet;
 
-class mafdb : private seqdb
+class mafdb : public seqdb
 {
-    typedef std::map<std::string, AMSet> MSAMAP;
-    typedef std::map<std::string, std::vector<inode>> MSADATA;
+    typedef std::map<std::string, std::shared_ptr<AMSet>> MSAMAP;
+    typedef std::map<std::string, std::shared_ptr<std::vector<inode>>> MSADATA;
+    friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
         mafdb (const std::string & name, const std::string& dbp, const std::string& ref)
             : seqdb(name, 1, dbp), ref(ref){};
-        mafdb () : mafdb("defaultMSA","./test","mm10"){ };
-        ~mafdb() { close_db (dbs2);};
+        mafdb () : mafdb("defaultMSA","./test/maf","mm10"){ };
+        ~mafdb()
+        {
+            close_db (dbs2);
+            for (auto &chr:chrs)
+                clear_index(chr);
+        };
         size_t hasher(const std::string& s,const size_t& l , const size_t& r)
         {
             std::size_t seed = 0;
@@ -81,9 +85,9 @@ class mafdb : private seqdb
             boost::hash_combine(seed,r);
             return seed;
         };
-        void save_indexes (const std::string&);
-        void load_indexes (const std::string&);
-        void init_tree(const size_t sz);
+        void clear_index (const std::string&);
+        void load_index (const std::string&);
+        void init_tree();
         // routine to save/load indices
         /*
          *  Inherited Virtuals
@@ -91,39 +95,28 @@ class mafdb : private seqdb
 
         bool import (const std::string& dirname);
         void import_chr();
-        size_t get_index(const size_t& idx );
-        //get the index for the content db from a size_t index
-        //
-        void save_index(const std::string& dbname);
-        void load_index(const std::string& dbname);
-        void init_tree(const std::string& dbname);
         bool load_db (const std::string & dbname);
         bool export_db (const std::string & dbname);
+        //bool export_db (const std::string & dbname);
         std::string get(const size_t& l , const size_t& r);
         std::string get(const std::string& key);
         template <class archive>
             void serialize(archive & ar, const unsigned ver)
         {
-            ar & name;
-            ar & dbpath;
-            ar & chunksz;
-            ar & chr;
-            ar & indextype;
-            ar & indices;
+            ar & boost::serialization::base_object<seqdb>(*this);
+            ar & ref;
             ar & sizes;
-            ar & fapaths;
-            ar & dbpaths;
             ar & dbpaths2;
-            ar & treesizes;
+            //ar & treesizes;
         };
 
     private:
         std::string ref;
-        MSAMAP indextrees;
-        MSADATA indexdata;
+        MSAMAP msatrees;
+        MSADATA msadata;
         boost::hash<size_t> h_;
         boost::hash<std::string> hs_;
-        std::map<std::string, size_t> treesizes;
+        //std::map<std::string, size_t> treesizes;
         DB dbs2;
         NAMES dbpaths2;
 };

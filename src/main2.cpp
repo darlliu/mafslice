@@ -32,20 +32,17 @@ int main (int ac, char** av){
     if (vm.count("test")) {
         std::cerr << "running the test"<<std::endl;
         mafdb s;
-        s.import("./test/maf/fasta");
-        return 0;
-        //if (!s.load_db("./test/maf/db.cfg")){
-            //std::cerr << "Test load db failed! Importing instead!\n";
-            //s.import("./test/maf/fasta");
-        //} else {
-            //std::cerr << "Test load db suceess!\n";
-        //}
-        //std::cerr << "Test Get: " << s.get(4e6+9900,4e6+10400) << std::endl;
-        //std::cerr << "Test Get: " << s.get(4e6+900,4e6+1400) << std::endl;
-        //if (s.export_db("./test/db.cfg"))
-            //std::cerr << "Test export Sucess! " <<std::endl;
-        //else
-            //std::cerr << "Test export Fail!! " <<std::endl;
+        if (!s.load_db("./test/maf/db.cfg")){
+            std::cerr << "Test load db failed! Importing instead!\n";
+            s.import("./test/maf/fasta");
+            s.init_tree();
+        } else {
+            std::cerr << "Test load db suceess!\n";
+        }
+        if (s.export_db("./test/maf/db.cfg"))
+            std::cerr << "Test export Sucess! " <<std::endl;
+        else
+            std::cerr << "Test export Fail!! " <<std::endl;
     } else {
         std::cerr << "running the program"<<std::endl;
         std::cerr << "run it later!"<<std::endl;
