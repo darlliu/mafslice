@@ -38,8 +38,8 @@ int main (int ac, char** av){
         } else {
             std::cerr << "Test load db suceess!\n";
         }
-        std::cerr << "Test Get: " << s.get(4e6+9900,4e6+10400) << std::endl;
-        std::cerr << "Test Get: " << s.get(4e6+900,4e6+1400) << std::endl;
+        std::cerr << "Test Get: " << s.get("chr6",4e6+9900,4e6+10400) << std::endl;
+        std::cerr << "Test Get: " << s.get("chr6",4e6+900,4e6+1400) << std::endl;
         if (s.export_db("./test/db.cfg"))
             std::cerr << "Test export Sucess! " <<std::endl;
         else
@@ -53,16 +53,12 @@ int main (int ac, char** av){
                 std::cerr << "Error loading the config file!"<<std::endl;
                 return 1;
             } else {
-                std::cerr << "Test Get: " << s.get(4e6+9900,4e6+10400) << std::endl;
-                std::cerr << "Test Get: " << s.get(4e6+900,4e6+1400) << std::endl;
                 return 0 ;
             }
         } else if (vm.count("create")) {
             seqdb s(dbname, cks, dbpath);
             std::cerr << "Creating a db!"<<std::endl;
             s.import(gph);
-            std::cerr << "Test Get: " << s.get(4e6+9900,4e6+10400) << std::endl;
-            std::cerr << "Test Get: " << s.get(4e6+900,4e6+1400) << std::endl;
             if (s.export_db("./db.cfg"))
                 std::cerr << "Test export Success! " <<std::endl;
             else
