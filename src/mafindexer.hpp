@@ -62,12 +62,12 @@ class mafdb : public seqdb
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
         mafdb (const std::string & name, const std::string& dbp, const std::string& ref)
-            : seqdb(name, 1, dbp), ref(ref){};
+            : seqdb(name, 1, dbp), ref(ref), init(false){};
         mafdb () : mafdb("defaultMSA","./test/maf","mm10"){ };
         ~mafdb()
         {
             close_db (dbs2);
-            for (auto &chr:chrs)
+            if (init) for (auto &chr:chrs)
                 clear_index(chr);
         };
         size_t hasher(const std::string& s,const size_t& l , const size_t& r)
@@ -116,6 +116,7 @@ class mafdb : public seqdb
         MSADATA msadata;
         boost::hash<size_t> h_;
         boost::hash<std::string> hs_;
+        bool init;
         //std::map<std::string, size_t> treesizes;
         DB dbs2;
         NAMES dbpaths2;

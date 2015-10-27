@@ -197,6 +197,7 @@ void mafdb::load_index(const std::string& chr)
 }
 void mafdb::init_tree()
 {
+    if (init) return;
     size_t sz_all=0;
     std::cerr << "Trying to initialize AMSet for MSA" << std::endl;
     for (auto &chr: chrs){
@@ -207,6 +208,7 @@ void mafdb::init_tree()
         msatrees[chr]=std::shared_ptr <AMSet> (new AMSet);
         load_index(chr);
     }
+    init = true;
     return;
 }
 bool mafdb::load_db (const std::string & fp)
