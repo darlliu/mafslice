@@ -71,9 +71,8 @@ bool mafdb::import (const std::string& dirname)
 void mafdb::import_chr ()
 {
     auto chrfp = fapaths[chr];
-    auto dbp = dbpaths[chr];
-    auto db = dbs[chr];
-    size_t idx = 0;
+    auto dbv = dbs[chr];
+    size_t idx = 0, total=0;
     std::ifstream ifs (chrfp);
     std::string tmp="",line, foo, sign, seq, species;
     std::string key, val;
@@ -88,31 +87,45 @@ void mafdb::import_chr ()
     std::cout<< "Opened file "<<chrfp << " On chr: "<< \
         chr <<" Size: "<<fsize<<" Est. Recs: <"<<fsize/2000<<std::endl;
     fsize/=2000;
+    if (fsize > 1<<20 )
+    {
+        std::cout<< "Size is too big, trimming into "<< (1<<20)<<std::endl;
+        fsize=1<<20;
+    }
+    auto tune = [&](decltype(dbv[0]) &db, short pfx=0){
+        auto dbp = dbpaths[chr];
+        std::cerr<<std::endl;
 #if USE_DBT
-    if (fsize>65536)
-    {
-        std::cerr<<" Tuning new bucket size (B+ Tree): "<<fsize/10 <<std::endl;
-        db->tune_buckets (1LL* fsize/10);
-        db->tune_map(2LL << 30);
-        db->tune_defrag(8);
-        std::cerr<<" Tuning comparator..."<<std::endl;
-        db->tune_comparator(&CMPSZ);
-    }
+        if (fsize>65536)
+        {
+            std::cerr<<" Tuning new bucket size (B+ Tree): "<<fsize/10 <<std::endl;
+            db->tune_buckets (1LL* fsize/10);
+            db->tune_map(2LL << 30);
+            db->tune_defrag(8);
+            std::cerr<<" Tuning comparator..."<<std::endl;
+            db->tune_comparator(&CMPSZ);
+        }
 #else
-    if (fsize*4>1000*1000)
-    {
-        std::cerr<<" Tuning new bucket size (Hash table): "<<fsize*2 <<std::endl;
-        db->tune_buckets (1LL* fsize*2);
-        db->tune_options(kyotocabinet::HashDB::TLINEAR);
-        db->tune_map(2LL << 30);
-        db->tune_defrag(8);
-    }
+        if (fsize*4>1000*1000)
+        {
+            std::cerr<<" Tuning new bucket size (Hash table): "<<fsize*2 <<std::endl;
+            db->tune_buckets (1LL* fsize*2);
+            db->tune_options(kyotocabinet::HashDB::TLINEAR);
+            db->tune_map(2LL << 30);
+            db->tune_defrag(8);
+        }
 #endif
-    if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
-    {
-        std::cerr << "open error: " << db->error().name() << std::endl;
-        throw ("Error opening DB");
-    }
+        auto dbp2=dbp;
+        if (pfx>0) dbp2 = dbp+"."+std::to_string(pfx-1);
+        if (!db->open(dbp2, _DB::OWRITER | _DB::OCREATE))
+        {
+            std::cerr << "open error: " << db->error().name() << std::endl;
+            throw ("Error opening DB");
+        }
+        return dbp2;
+    };
+    auto db = dbv[0];
+    tune(db);
     while (std::getline(ifs, line))
     {
         if (line.size()==0 || line[0]=='#') continue;
@@ -131,8 +144,17 @@ void mafdb::import_chr ()
                 {
                     std::cerr << "@" ;
                     db->set_bulk(data,false);
-                    std::cerr << idx << "/"<<data.size()<<" .";
+                    total+=idx;
+                    std::cerr << idx << "/"<<total<<" .";
                     data.clear();
+                    if (idx > 1<<20)
+                    {
+                        dbv.push_back(std::shared_ptr<_DB>(new _DB));
+                        db = dbv.back();
+                        auto dbp = tune(db,dbv.size());
+                        std::cerr<<"Creating a new db file: "<<dbp<<std::endl;
+                        idx=0;
+                    }
                 }
                 //saving routine in here
             }
@@ -153,9 +175,18 @@ void mafdb::import_chr ()
             }
         } else continue;
     }
+    {
+        std::cerr << "@" ;
+        db->set_bulk(data,false);
+        total+=idx;
+        std::cerr << idx << "/"<<total<<" .";
+        data.clear();
+    }
     ifs.close();
     std::cout<<std::endl << "Loaded length "<<idx<<std::endl;
-    sizes[chr] = idx;
+    sizes[chr] = total;
+    postfixes[chr] = dbv.size();
+
     return;
 }
 void mafdb::clear_index(const std::string& chr)
@@ -166,29 +197,36 @@ void mafdb::clear_index(const std::string& chr)
 }
 void mafdb::load_index(const std::string& chr)
 {
-    std::cerr << "Trying to initiate MSA on "<<chr<<std::endl;
     size_t cnt = 0, l, r;
     std::string key, val;
-    auto db = dbs[chr];
-    auto cur = db->cursor();
-    cur->jump();
     auto msad = msadata[chr];
     auto msa = msatrees[chr];
-    size_t lr [2] ;
-    while (cur->get(&key, &val, true)){
-        l = ((size_t*)key.c_str())[0];
-        r = ((size_t*)key.c_str())[1];
-        auto ii = inode(l, l+r);
-        msad->push_back(ii) ;
-        cnt++;
-    } ;
-    delete cur;
+    auto dbv = dbs[chr];
+    std::cerr << "Trying to initiate MSA on "<<chr<<" with db counts "<<dbv.size()<<std::endl;
+    for (short i=0; i<dbv.size();++i)
+    {
+        auto cur = dbv[i]->cursor();
+        cur->jump();
+        size_t lr [2] ;
+        while (cur->get(&key, &val, true)){
+            l = ((size_t*)key.c_str())[0];
+            r = ((size_t*)key.c_str())[1];
+            auto ii = inode(l, l+r,i);
+            msad->push_back(ii) ;
+            cnt++;
+            if (cnt % 5000==0) std::cerr<<".";
+        } ;
+        delete cur;
+    }
     for (auto it = msad->begin(); it!=msad->end();++it) msa->insert(*it);
     std::cerr << "Finished inserting, last record:"<<l<<","<<r<<std::endl;
     std::cerr <<cnt<<" records"<<std::endl;
-    auto it = msa->lower_bound(inode(1000,1050));
-    if (it!=msa->end())
-        std::cerr << "Trying to find a record >1000, 1050 :"<<it->l<<","<<it->r<<":"<<it->score<<std::endl;
+    for (size_t ll=1000; ll<l; ll*=2)
+    {
+        auto it = msa->lower_bound(inode(ll, ll+ll/2));
+        if (it!=msa->end())
+            std::cerr << "Trying to find a record >"<<ll<<" : "<<it->l<<","<<it->r<<"@"<<it->p<<std::endl;
+    }
     return;
 }
 void mafdb::init_tree()
@@ -205,6 +243,7 @@ void mafdb::init_tree()
         load_index(chr);
     }
     init = true;
+    std::cerr << "Total elements: " <<sz_all<< std::endl;
     return;
 }
 bool mafdb::load_db (const std::string & fp)
@@ -218,15 +257,24 @@ bool mafdb::load_db (const std::string & fp)
     }
     IARCHIVE ar(ifs);
     ar >> BOOST_SERIALIZATION_NVP(*this);
-    for (auto it:dbpaths)
+    for (auto chr:chrs)
     {
-        auto db = std::shared_ptr <_DB>(new _DB);
-        if (!db->open(it.second, _DB::OREADER))
+        for (int i =0; i<postfixes[chr]; ++i)
         {
-            std::cerr << "open error: " << db->error().name() << std::endl;
-            return false;
+            auto dbp=dbpaths[chr];
+            if (i>0) dbp= dbp+"."+std::to_string(i);
+            auto db = std::shared_ptr <_DB>(new _DB);
+#if USE_DBT
+            db->tune_comparator(&CMPSZ);
+#endif
+            if (!db->open(dbp, _DB::OREADER))
+            {
+                std::cerr << "open error: " << db->error().name()<< \
+                    " on: "<<dbp<< std::endl;
+                return false;
+            }
+            dbs[chr].push_back(db);
         }
-        dbs[it.first]=db;
     }
     init_tree();
     return true;

@@ -64,7 +64,7 @@ void seqdb::import_chr()
 {
     auto chrfp = fapaths[chr];
     auto dbp = dbpaths[chr];
-    auto db = dbs[chr];
+    auto db = dbs[chr][0];
     if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
     {
         std::cerr << "open error: " << db->error().name() << std::endl;
@@ -101,7 +101,7 @@ void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
     std::cout << "Initializing DBs, length: " <<chrs.size() <<std::endl;
     for (auto chr: chrs)
     {
-        dbs[chr]=std::shared_ptr <_DB>(new _DB);
+        dbs[chr].push_back(std::shared_ptr <_DB>(new _DB));
     }
     return;
 };
@@ -116,7 +116,7 @@ std::string seqdb::get(const size_t& l, const size_t& r)
     }
     auto idx = get_index(l); //integer division on chunksz
     auto idx0 = idx;
-    auto db = dbs[chr];
+    auto db = dbs[chr][0];
     std::string val(""), tmp;
     do
     {
@@ -167,7 +167,7 @@ bool seqdb::load_db(const std::string& fp )
             std::cerr << "open error: " << db->error().name() << std::endl;
             return false;
         }
-        dbs[it.first]=db;
+        dbs[it.first].push_back(db);
     }
     return true;
 };

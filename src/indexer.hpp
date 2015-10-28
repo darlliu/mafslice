@@ -20,7 +20,7 @@ typedef kyotocabinet::TreeDB _DB;
 #else
 typedef kyotocabinet::HashDB _DB;
 #endif
-typedef std::map<std::string, std::shared_ptr<_DB>> DB;
+typedef std::map<std::string, std::vector<std::shared_ptr<_DB>>> DB;
 
 
 #if USE_BINARY_ARCHIVE
@@ -72,7 +72,8 @@ class seqdb {
         void init_db(const std::vector<std::string>&, DB&);
         void close_db(DB& dbs){
             for (auto it=dbs.begin(); it!=dbs.end();++it)
-                it->second->close();
+                for (auto &iit: it->second)
+                    iit->close();
             dbs.clear();
         };
         virtual bool load_db(const std::string &);
@@ -91,6 +92,7 @@ class seqdb {
                 ar & indextype;
                 ar & indices;
                 ar & sizes;
+                ar & postfixes;
                 ar & fapaths;
                 ar & dbpaths;
                 //we cannot serialize the dbs -- they have to be loaded in load_db!
@@ -111,7 +113,7 @@ class seqdb {
         INDEXTYPE indextype;
         INDEXMAP indices;
         DB dbs;
-        SIZES sizes;
+        SIZES sizes, postfixes;
         NAMES fapaths, dbpaths;
 };
 

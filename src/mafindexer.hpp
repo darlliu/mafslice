@@ -25,12 +25,12 @@ class inode :public avl_set_base_hook < optimize_size <true> >
 
     public:
         size_t l,r;
-        float score;
+        short p;
         avl_set_member_hook<> member_hook_;
         inode (const size_t& ll,
                const size_t& rr,
-               float sc=-1):
-            l(ll), r(rr), score(sc)  {};
+               short pp=0):
+            l(ll), r(rr), p(pp)  {};
         friend bool operator < (const inode& l, const inode& r)
         {
             if (l.l == r.l)
