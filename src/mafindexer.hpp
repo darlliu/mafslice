@@ -13,6 +13,7 @@
 #ifndef MAFINDEXER
 #define MAFINDEXER
 #include"indexer.hpp"
+#include<kccompare.h>
 #include<boost/functional/hash.hpp>
 #include<boost/functional/hash/extensions.hpp>
 #include<boost/intrusive/avl_set.hpp>
@@ -51,6 +52,45 @@ class inode :public avl_set_base_hook < optimize_size <true> >
 
 };
 
+class CodedSizeTComparator :public kyotocabinet::Comparator
+{
+    public:
+        CodedSizeTComparator(){};
+        int32_t compare(const char* akbuf, size_t aksiz,
+                const char* bkbuf, size_t bksiz)
+        {
+             size_t l1,r1, l2, r2;
+             l1= ((size_t*)akbuf) [0];
+             r1= ((size_t*)akbuf) [1];
+             l2= ((size_t*)bkbuf) [0];
+             r2= ((size_t*)bkbuf) [1];
+             if (l1<l2) return -1;
+             if (l1>l2) return 1;
+             if (r1>r2) return -1;
+             if (r1<r2) return 1;
+             return 0;
+        };
+
+};
+class HashComparator :public kyotocabinet::Comparator
+{
+    public:
+        HashComparator(){};
+        int32_t compare(const char* akbuf, size_t aksiz,
+                const char* bkbuf, size_t bksiz)
+        {
+             size_t l1,l2;
+             l1= ((size_t*)akbuf) [0];
+             l2= ((size_t*)bkbuf) [0];
+             if (l1>l2) return 1;
+             else if (l1<l2) return -1;
+             else if (l1>l2) return 1;
+             else return 0;
+        };
+
+};
+static CodedSizeTComparator CMPSZ;
+static HashComparator CMPHS;
 typedef avl_set <inode, compare<std::greater<inode>>> ASet;
 typedef member_hook <inode, avl_set_member_hook<>, &inode::member_hook_> MemberOption;
 typedef avl_multiset <inode, MemberOption> AMSet;
@@ -66,7 +106,6 @@ class mafdb : public seqdb
         mafdb () : mafdb("defaultMSA","./test/maf","mm10"){ };
         ~mafdb()
         {
-            close_db (dbs2);
             if (init) for (auto &chr:chrs)
                 clear_index(chr);
         };
@@ -118,7 +157,6 @@ class mafdb : public seqdb
         boost::hash<std::string> hs_;
         bool init;
         //std::map<std::string, size_t> treesizes;
-        DB dbs2;
         NAMES dbpaths2;
 };
 

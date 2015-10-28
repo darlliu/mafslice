@@ -15,8 +15,14 @@ typedef std::vector<size_t> INDICES;
 typedef std::map<std::string, INDICES> INDEXMAP;
 typedef std::map<std::string, std::string> NAMES;
 typedef std::map<std::string, size_t> SIZES;
-typedef std::map<std::string, std::shared_ptr<kyotocabinet::HashDB>> DB;
-typedef std::map<std::string, std::shared_ptr<kyotocabinet::TreeDB>> DBT;
+#if USE_DBT
+typedef kyotocabinet::TreeDB _DB;
+#else
+typedef kyotocabinet::HashDB _DB;
+#endif
+typedef std::map<std::string, std::shared_ptr<_DB>> DB;
+
+
 #if USE_BINARY_ARCHIVE
 typedef boost::archive::binary_oarchive OARCHIVE;
 typedef boost::archive::binary_iarchive IARCHIVE;
@@ -38,8 +44,8 @@ class seqdb {
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
         seqdb (const std::string & name, const size_t& sz, const std::string& dbp = "./test",
-                const INDEXTYPE& idxtype=increment, const DBTYPE& dbtype=hash):
-            name (name), chunksz(sz), indextype(idxtype), dbtype(dbtype),
+                const INDEXTYPE& idxtype=increment):
+            name (name), chunksz(sz), indextype(idxtype),
             dbpath(dbp), chr(""){};
         seqdb(): seqdb("default", 1e4) {};
         ~seqdb()
@@ -95,7 +101,11 @@ class seqdb {
     protected:
         std::string name, dbpath; //name of the db and the directory path for kyotocabinet
         size_t chunksz; //size of each chunk of sequence
-        DBTYPE dbtype; // type of db to be intialized -> only affects db construction
+#if USE_DBT
+        DBTYPE dbtype=tree; // type of db to be intialized -> only affects db construction
+#else
+        DBTYPE dbtype=hash; // type of db to be intialized -> only affects db construction
+#endif
         std::string chr;
         std::vector<std::string> chrs;
         INDEXTYPE indextype;

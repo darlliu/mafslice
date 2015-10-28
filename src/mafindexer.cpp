@@ -34,7 +34,6 @@ bool mafdb::import (const std::string& dirname)
             std::cout << "Found MAF file : " << fp << std::endl;
             fps.push_back(fp);
             fns.push_back(it->path().filename().string());
-
         }
         else
         {
@@ -49,17 +48,22 @@ bool mafdb::import (const std::string& dirname)
         chrs.push_back(fn);
     }
     init_db(chrs, dbs);
-    init_db(chrs, dbs2);
+    //init_db(chrs, dbs2);
     for (unsigned i =0; i < fps.size(); ++i)
     {
         auto chr = chrs[i];
         set_chr(chr);
         auto chrp = fps[i];
         fapaths [chr] = chrp;
-        auto dbp = dbpath+"/"+chr+".MSAseq.kch";
-        auto dbp2 = dbpath+"/"+chr+".MSAinfo.kch";
+#if USE_DBT
+        auto dbp = dbpath+"/"+chr+".MSA.kct";
+        //auto dbp2 = dbpath+"/"+chr+".MSAinfo.kct";
+#else
+        auto dbp = dbpath+"/"+chr+".MSA.kch";
+        //auto dbp2 = dbpath+"/"+chr+".MSAinfo.kch";
+#endif
         dbpaths [chr] = dbp;
-        dbpaths2 [chr] = dbp2;
+        //dbpaths2 [chr] = dbp2;
         import_chr();
     }
     return true;
@@ -68,90 +72,89 @@ void mafdb::import_chr ()
 {
     auto chrfp = fapaths[chr];
     auto dbp = dbpaths[chr];
-    auto dbp2 = dbpaths2[chr];
     auto db = dbs[chr];
-    auto db2 = dbs2[chr];
-    if (!db->open(dbp, kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
+    size_t idx = 0;
+    std::ifstream ifs (chrfp);
+    std::string tmp="",line, foo, sign, seq, species;
+    std::string key, val;
+    std::map<std::string, std::string> data;
+    float score;
+    size_t start, end, len, rstart, rend, rr[2];
+    std::stringstream ss;
+    if (!ifs.is_open()) throw("Error Opening file!");
+    ifs.seekg (0, ifs.end);
+    size_t fsize = ifs.tellg();
+    ifs.seekg (0, ifs.beg);
+    std::cout<< "Opened file "<<chrfp << " On chr: "<< \
+        chr <<" Size: "<<fsize<<" Est. Recs: <"<<fsize/2000<<std::endl;
+    fsize/=2000;
+#if USE_DBT
+    if (fsize>65536)
+    {
+        std::cerr<<" Tuning new bucket size (B+ Tree): "<<fsize/10 <<std::endl;
+        db->tune_buckets (1LL* fsize/10);
+        db->tune_map(2LL << 30);
+        db->tune_defrag(8);
+        std::cerr<<" Tuning comparator..."<<std::endl;
+        db->tune_comparator(&CMPSZ);
+    }
+#else
+    if (fsize*4>1000*1000)
+    {
+        std::cerr<<" Tuning new bucket size (Hash table): "<<fsize*2 <<std::endl;
+        db->tune_buckets (1LL* fsize*2);
+        db->tune_options(kyotocabinet::HashDB::TLINEAR);
+        db->tune_map(2LL << 30);
+        db->tune_defrag(8);
+    }
+#endif
+    if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
     {
         std::cerr << "open error: " << db->error().name() << std::endl;
         throw ("Error opening DB");
     }
-    if (!db2->open(dbp2, kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
-    {
-        std::cerr << "open error: " << db2->error().name() << std::endl;
-        throw ("Error opening DB");
-    }
-    size_t idx = 0;
-    std::ifstream ifs (chrfp);
-    std::string tmp="",line, foo, sign, seq, species, rseq;
-    float score;
-    size_t start, end, len, rstart, rend;
-
-    std::stringstream ss;
-
-    if (!ifs.is_open()) throw("Error Opening file!");
-    std::cout<< "Opened file "<<chrfp << " On chr: "<< chr <<std::endl;
     while (std::getline(ifs, line))
     {
         if (line.size()==0 || line[0]=='#') continue;
+        ss.clear();
+        ss.str(line);
         if (line[0]=='a'){
             if (tmp.size()>0){
-                db2->set(std::to_string(rstart)+","+std::to_string(rend),
-                        std::to_string(score)+":"+tmp);
-                //if (idx % 50 == 0){
-                    //std::cerr << "Storing index info "<<rstart<<","<<rend<<":"<<tmp<<std::endl;
-                //}
+                //auto hs = hasher (rstart, rend);
+                rr[0]=rstart;
+                rr[1]=rend;
+                key = std::string((char*)&rr, sizeof(rr));
+                val = std::to_string(score)+" "+tmp;
+                data[key]=val;
                 idx++;
+                if (idx % 5000 ==0)
+                {
+                    std::cerr << "@" ;
+                    db->set_bulk(data,false);
+                    std::cerr << idx << "/"<<data.size()<<" .";
+                    data.clear();
+                }
+                //saving routine in here
             }
-            //saving routine in here
             tmp = "";
             boost::replace_last (line, "="," ");
-            ss.str(std::string());
-            ss.clear();
-            ss << line;
-            ss >> foo;
-            ss >> foo;
-            ss >> score;
-            //if (idx % 50 == 0){
-                //std::cerr <<"Line is " << line << std::endl;
-                //std::cerr << "Storing score info "<<foo<<":"<<score<<std::endl;
-            //}
+            ss >> foo >> foo >> score;
         } else if (line[0]=='i') {
             continue;
         } else if (line[0]=='s') {
-            ss.str(std::string());
-            ss.clear();
-            ss << line;
-            ss >> foo;
-            ss >> species;
-            ss >> start;
-            ss >> end;
-            ss >> sign;
-            ss >> len;
-            ss >> seq;
+            ss >> foo >> species >> start >> end >> sign >> len >> seq;
             if (species.find(ref)!=std::string::npos){
                 rstart = start;
                 rend = end;
-                rseq = seq;
-                //auto hs = hasher (species, rstart, rend);
-                auto hs = species + std::to_string(start)+std::to_string(end);
-                db->set(hs, sign+seq);
             } else {
-                if (tmp.size()>0) tmp+="|";
-                tmp += species+","+std::to_string(start) + "," + std::to_string(end);
-                //end += start;
-                //auto hs = hasher (species, start, end);
-                auto hs = species + std::to_string(start)+std::to_string(end);
-                db->set(hs, sign+seq);
-                //if (idx % 50 == 0){
-                    //std::cerr <<"Line is " << line << std::endl;
-                    //std::cerr << "Storing seq info "<<foo<<":"<<species<<":"<<start<<":"<<end<<","<<sign<<","<<len<<":"<<seq<<std::endl;
-                //}
+                if (tmp.size()>0) tmp+="\t";
+                tmp += species+" "+std::to_string(start) + " " + std::to_string(end)\
+                       +" "+sign+seq;
             }
         } else continue;
     }
     ifs.close();
-    std::cout << "Loaded length "<<idx<<std::endl;
+    std::cout<<std::endl << "Loaded length "<<idx<<std::endl;
     sizes[chr] = idx;
     return;
 }
@@ -159,10 +162,6 @@ void mafdb::clear_index(const std::string& chr)
 {
     auto msa = msatrees[chr];
     msa->clear();
-    //for (auto it=msa->begin(); it!=msa->end(); ++it)
-    //{
-        //msa->erase(it);
-    //}
     return;
 }
 void mafdb::load_index(const std::string& chr)
@@ -170,18 +169,15 @@ void mafdb::load_index(const std::string& chr)
     std::cerr << "Trying to initiate MSA on "<<chr<<std::endl;
     size_t cnt = 0, l, r;
     std::string key, val;
-    auto db = dbs2[chr];
+    auto db = dbs[chr];
     auto cur = db->cursor();
     cur->jump();
     auto msad = msadata[chr];
     auto msa = msatrees[chr];
-    std::stringstream ss;
+    size_t lr [2] ;
     while (cur->get(&key, &val, true)){
-        boost::replace_last(key,","," ");
-        ss.clear();
-        ss.str(key);
-        ss >> l;
-        ss >> r;
+        l = ((size_t*)key.c_str())[0];
+        r = ((size_t*)key.c_str())[1];
         auto ii = inode(l, l+r);
         msad->push_back(ii) ;
         cnt++;
@@ -224,23 +220,13 @@ bool mafdb::load_db (const std::string & fp)
     ar >> BOOST_SERIALIZATION_NVP(*this);
     for (auto it:dbpaths)
     {
-        auto db = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
-        if (!db->open(it.second, kyotocabinet::HashDB::OREADER))
+        auto db = std::shared_ptr <_DB>(new _DB);
+        if (!db->open(it.second, _DB::OREADER))
         {
             std::cerr << "open error: " << db->error().name() << std::endl;
             return false;
         }
         dbs[it.first]=db;
-    }
-    for (auto it:dbpaths2)
-    {
-        auto db2 = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
-        if (!db2->open(it.second, kyotocabinet::HashDB::OREADER))
-        {
-            std::cerr << "open error: " << db2->error().name() << std::endl;
-            return false;
-        }
-        dbs2[it.first]=db2;
     }
     init_tree();
     return true;

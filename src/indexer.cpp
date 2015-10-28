@@ -65,7 +65,7 @@ void seqdb::import_chr()
     auto chrfp = fapaths[chr];
     auto dbp = dbpaths[chr];
     auto db = dbs[chr];
-    if (!db->open(dbp, kyotocabinet::HashDB::OWRITER | kyotocabinet::HashDB::OCREATE))
+    if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
     {
         std::cerr << "open error: " << db->error().name() << std::endl;
     }
@@ -101,7 +101,7 @@ void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
     std::cout << "Initializing DBs, length: " <<chrs.size() <<std::endl;
     for (auto chr: chrs)
     {
-        dbs[chr]=std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
+        dbs[chr]=std::shared_ptr <_DB>(new _DB);
     }
     return;
 };
@@ -161,8 +161,8 @@ bool seqdb::load_db(const std::string& fp )
     ar >> BOOST_SERIALIZATION_NVP(*this);
     for (auto it:dbpaths)
     {
-        auto db = std::shared_ptr <kyotocabinet::HashDB>(new kyotocabinet::HashDB);
-        if (!db->open(it.second, kyotocabinet::HashDB::OREADER))
+        auto db = std::shared_ptr <_DB>(new _DB);
+        if (!db->open(it.second, _DB::OREADER))
         {
             std::cerr << "open error: " << db->error().name() << std::endl;
             return false;

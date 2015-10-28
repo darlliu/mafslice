@@ -4,7 +4,7 @@ project(mafslice)
 #set(CMAKE_CXX_COMPILER "clang++")
 #set(CMAKE_CXX_FLAGS "-O -std=c++1y")
 set(CMAKE_CXX_COMPILER "g++")
-set(CMAKE_CXX_FLAGS "-Os -std=c++1y")
+set(CMAKE_CXX_FLAGS "-O3 -std=c++1y")
 
 set(SOURCE_DIR "../src")
 set(BOOST_ROOT "/home/yul13/gnu/boost_1_59_0")
