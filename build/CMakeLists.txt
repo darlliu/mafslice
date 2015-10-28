@@ -7,10 +7,10 @@ set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_CXX_FLAGS "-O3 -std=c++1y")
 
 set(SOURCE_DIR "../src")
-set(BOOST_ROOT "/home/yul13/gnu/boost_1_59_0")
+set(BOOST_ROOT "/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/boost/alt-1.59.0/boost_1_59_0")
 set(BOOST_LIB_DIR "${BOOST_ROOT}/stage/lib")
-set(KC_DIR "/home/yul13/bin/include/")
-set(KC_LIB_DIR "/home/yul13/bin/lib")
+set(KC_DIR "/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/kyotocabinet/1.2.76-gcc-4.8.2/include")
+set(KC_LIB_DIR "/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/kyotocabinet/1.2.76-gcc-4.8.2/lib")
 set(PYTHON_ROOT "/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/python/Python-2.7.10")
 set(PYTHON_LIBRARY "${PYTHON_ROOT}/lib")
 set(PYTHON_INCLUDE_DIR "${PYTHON_ROOT}/include/python2.7")
@@ -21,7 +21,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "../bin")
 
 INCLUDE_DIRECTORIES(
     ${SOURCE_DIR}
-    ${BOOST_DIR}
+    ${BOOST_ROOT}
     ${KC_DIR}
 )
 
@@ -35,12 +35,12 @@ message("Configuring core C++ binaries")
 add_library(indexer SHARED ${SOURCE_DIR}/indexer.cpp ${SOURCE_DIR}/mafindexer.cpp)
 target_link_libraries(indexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
 
+FIND_PACKAGE(Boost 1.59.0)
+FIND_PACKAGE(PythonLibs 2.7.10)
 add_executable(seqslice.exe ${SOURCE_DIR}/main.cpp)
 target_link_libraries(seqslice.exe indexer boost_program_options)
 add_executable(mafslice.exe ${SOURCE_DIR}/main2.cpp)
 target_link_libraries(mafslice.exe indexer boost_program_options)
-FIND_PACKAGE(Boost 1.59.0)
-FIND_PACKAGE(PythonLibs 2.7.10)
 IF(Boost_FOUND AND PYTHONLIBS_FOUND)
     message("BOOST 1.59 AND PYTHON 2.7.10 FOUND, configuring python interface")
     INCLUDE_DIRECTORIES ("${Boost_INCLUDE_DIRS}")

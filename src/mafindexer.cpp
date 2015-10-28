@@ -198,31 +198,46 @@ void mafdb::clear_index(const std::string& chr)
 }
 void mafdb::load_index(const std::string& chr)
 {
-    size_t cnt = 0, l, r;
+    size_t cnt = 0;
     std::string key, val;
     auto msad = msadata[chr];
     auto msa = msatrees[chr];
     auto dbv = dbs[chr];
     std::cerr << "Trying to initiate MSA on "<<chr<<" with db counts "<<dbv.size()<<std::endl;
-    for (short i=0; i<dbv.size();++i)
-    {
-        auto cur = dbv[i]->cursor();
-        cur->jump();
-        size_t lr [2] ;
-        while (cur->get(&key, &val, true)){
-            l = ((size_t*)key.c_str())[0];
-            r = ((size_t*)key.c_str())[1];
+    class Visitor : public _DB::Visitor{
+        public:
+        decltype(msad) v;
+        size_t cnt;
+        short i;
+        Visitor(decltype(msad) v_,short i_):
+            v(v_), cnt(0), i(i_){};
+        const char* visit_full (const char* kbuf, size_t ksiz,
+                                const char* vbuf, size_t vsiz, size_t *sp)
+        {
+            size_t l = ((size_t*)kbuf)[0];
+            size_t r = ((size_t*)kbuf)[1];
             auto ii = inode(l, l+r,i);
-            msad->push_back(ii) ;
+            v->push_back(ii) ;
             cnt++;
             if (cnt % 5000==0) std::cerr<<".";
-        } ;
-        delete cur;
+            return NOP;
+        };
+        const char* visit_empty (const char* kbuf, size_t ksiz,
+                                const char* vbuf, size_t vsiz, size_t *sp)
+        {
+            return NOP;
+        };
+    };
+    for (short i=0; i<dbv.size();++i)
+    {
+        auto vis = Visitor(msad, i);
+        dbv[i]->iterate(&vis, false);
+        cnt+=vis.cnt;
     }
-    for (auto it = msad->begin(); it!=msad->end();++it) msa->insert(*it);
-    std::cerr << "Finished inserting, last record:"<<l<<","<<r<<std::endl;
-    std::cerr <<cnt<<" records"<<std::endl;
-    for (size_t ll=1000; ll<l; ll*=2)
+    for (auto it = msad->begin(); it!=msad->end();++it)
+        msa->insert(*it);
+    std::cerr<<"Total inserted: " <<cnt<<" records"<<std::endl;
+    for (size_t ll=1000; ll<msad->back().l; ll*=2)
     {
         auto it = msa->lower_bound(inode(ll, ll+ll/2));
         if (it!=msa->end())
@@ -292,12 +307,13 @@ bool mafdb::export_db(const std::string& fp )
     OARCHIVE ar(ofs);
     ar << BOOST_SERIALIZATION_NVP(*this);
     return true;
-};
+}
 std::string mafdb::get(const size_t& l , const size_t& r)
 {
-}
-std::string mafdb::get(const std::string& key)
-{
+
+    std::cerr <<" Getting matches for "<<l <<" , "<<r <<std::endl;
+    auto pp = get_interval(l,r);
+    return "";
 }
 // get the content from index
 

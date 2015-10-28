@@ -138,14 +138,42 @@ class mafdb : public seqdb
         bool export_db (const std::string & dbname);
         //bool export_db (const std::string & dbname);
         std::string get(const size_t& l , const size_t& r);
-        std::string get(const std::string& key);
+        std::string get(const std::string& chr, const size_t& l,
+                const size_t& r)
+        {
+            set_chr(chr);
+            return get(l,r);
+        };
+        auto get_interval(const size_t& l , const size_t& r)
+        {
+            //have to define here to use auto
+            if (r==0) throw("Unexpected interval r=0");
+            auto msa = msatrees[chr];
+            auto it = msa->upper_bound(inode(r, r+1));
+            auto rit = it;
+            int cnt = 0;
+            for (; rit!=msa->begin(); --rit){
+                if (rit->r > l)
+                {
+                    //if (cnt ==0)
+                    std::cerr << " Found a match at : "<< rit->l << " , " << rit->r <<std::endl;
+                    ++cnt;
+                }
+                else break;
+            }
+            //check the last one as well as begin() may be included
+            std::cerr << " Found "<<cnt<< " matches, last one at : "<< rit->l << " , " << rit->r <<std::endl;
+            if (rit->r > l )
+                return std::pair<decltype(it) , decltype(it)> (++rit, it);
+            else
+                return std::pair<decltype(it) , decltype(it)> (rit, it);
+        };
         template <class archive>
             void serialize(archive & ar, const unsigned ver)
         {
             ar & boost::serialization::base_object<seqdb>(*this);
-            ar & ref;
-            ar & sizes;
-            ar & dbpaths2;
+            ar & BOOST_SERIALIZATION_NVP(ref);
+            ar & BOOST_SERIALIZATION_NVP(sizes);
             //ar & treesizes;
         };
 
@@ -157,7 +185,6 @@ class mafdb : public seqdb
         boost::hash<std::string> hs_;
         bool init;
         //std::map<std::string, size_t> treesizes;
-        NAMES dbpaths2;
 };
 
 #endif

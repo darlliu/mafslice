@@ -42,6 +42,7 @@ int main (int ac, char** av){
                 std::cerr << "Test load db suceess!\n";
             }
             s.init_tree();
+            s.get("chrY",16384000, 16584000);
             if (s.export_db(cfg))
                 std::cerr << "Test export Sucess! " <<std::endl;
             else
