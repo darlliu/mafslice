@@ -119,6 +119,7 @@ void mafdb::import_chr ()
         if (pfx>0) dbp2 = dbp+"."+std::to_string(pfx-1);
         if (!db->open(dbp2, _DB::OWRITER | _DB::OCREATE))
         {
+
             std::cerr << "open error: " << db->error().name() << std::endl;
             throw ("Error opening DB");
         }
@@ -144,7 +145,6 @@ void mafdb::import_chr ()
                 {
                     std::cerr << "@" ;
                     db->set_bulk(data,false);
-                    total+=idx;
                     std::cerr << idx << "/"<<total<<" .";
                     data.clear();
                     if (idx > 1<<20)
@@ -152,6 +152,7 @@ void mafdb::import_chr ()
                         dbv.push_back(std::shared_ptr<_DB>(new _DB));
                         db = dbv.back();
                         auto dbp = tune(db,dbv.size());
+                        total+=idx;
                         std::cerr<<"Creating a new db file: "<<dbp<<std::endl;
                         idx=0;
                     }
