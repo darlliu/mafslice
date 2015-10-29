@@ -18,16 +18,12 @@
 #include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
 
-#define USE_BINARY_ARCHIVE 0
 #define USE_DBT 0
 #define DEBUG 1
 
-#if USE_BINARY_ARCHIVE
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
-#else
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
-#endif
 
 #endif

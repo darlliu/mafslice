@@ -77,8 +77,9 @@ void mafdb::import_chr ()
     std::string tmp="",line, foo, sign, seq, species;
     std::string key, val;
     std::map<std::string, std::string> data;
+    std::vector <inode> inodes;
     float score;
-    size_t start, end, len, rstart, rend, rr[2];
+    unsigned start, end, len, rstart, rend, rr[2];
     std::stringstream ss;
     if (!ifs.is_open()) throw("Error Opening file!");
     ifs.seekg (0, ifs.end);
@@ -92,6 +93,7 @@ void mafdb::import_chr ()
         std::cout<< "Size is too big, trimming into "<< (1<<20)<<std::endl;
         fsize=1<<20;
     }
+    inodes.reserve(fsize);
     auto tune = [&](decltype(dbv[0]) &db, short pfx=0){
         auto dbp = dbpaths[chr];
         std::cerr<<std::endl;
@@ -169,6 +171,7 @@ void mafdb::import_chr ()
             if (species.find(ref)!=std::string::npos){
                 rstart = start;
                 rend = end;
+                inodes.push_back (inode (rstart, rend, dbv.size()-1));
             } else {
                 if (tmp.size()>0) tmp+="\t";
                 tmp += species+" "+std::to_string(start) + " " + std::to_string(end)\
@@ -184,10 +187,27 @@ void mafdb::import_chr ()
         data.clear();
     }
     ifs.close();
-    std::cout<<std::endl << "Loaded length "<<idx<<std::endl;
+    std::cout<<std::endl << "Loaded length "<<idx << " Saving indexes..."<<std::endl;
+    save_index(chr, inodes);
     sizes[chr] = total;
     postfixes[chr] = dbv.size();
+    inodes.clear();
 
+    return;
+}
+void mafdb::save_index(const std::string& chr, const std::vector<inode>& v)
+{
+    std::ofstream f(dbpaths[chr]+".index", std::ofstream::out|std::ofstream::binary);
+    if (!f.good())
+        throw ("Error opening the index file!");
+    auto sz =v.size();
+    f.write((char*) &sz, sizeof(size_t));
+    for (auto &it:v)
+    {
+        f.write((char*) &it.l, sizeof(unsigned));
+        f.write((char*) &it.r, sizeof(unsigned));
+        f.write((char*) &it.p, sizeof(short));
+    }
     return;
 }
 void mafdb::clear_index(const std::string& chr)
@@ -214,8 +234,8 @@ void mafdb::load_index(const std::string& chr)
         const char* visit_full (const char* kbuf, size_t ksiz,
                                 const char* vbuf, size_t vsiz, size_t *sp)
         {
-            size_t l = ((size_t*)kbuf)[0];
-            size_t r = ((size_t*)kbuf)[1];
+            unsigned l = ((unsigned*)kbuf)[0];
+            unsigned r = ((unsigned*)kbuf)[1];
             auto ii = inode(l, l+r,i);
             v->push_back(ii) ;
             cnt++;
@@ -228,12 +248,37 @@ void mafdb::load_index(const std::string& chr)
             return NOP;
         };
     };
-    for (short i=0; i<dbv.size();++i)
+
     {
-        auto vis = Visitor(msad, i);
-        dbv[i]->iterate(&vis, false);
-        cnt+=vis.cnt;
+        auto dph = dbpaths[chr];
+        std::ifstream f(dph+".index", std::ifstream::in | std::ifstream::binary);
+        size_t sz;
+        unsigned l, r;
+        short p;
+        if (!f.good())
+        {
+            std::cerr << "Error reading index file, reading from DB instead!"<<std::endl;
+            f.close();
+            for (short i=0; i<dbv.size();++i)
+            {
+                auto vis = Visitor(msad, i);
+                dbv[i]->iterate(&vis, false);
+                cnt+=vis.cnt;
+            }
+            save_index(chr,*msad);
+        } else {
+            f.read((char*) &sz, sizeof(size_t));
+            for (size_t i=0; i<sz; ++i)
+            {
+                f.read((char*) &l, sizeof(unsigned));
+                f.read((char*) &r, sizeof(unsigned));
+                f.read((char*) &p, sizeof(short));
+                msad->push_back(inode(l,r,p));
+            }
+            f.close();
+        }
     }
+
     for (auto it = msad->begin(); it!=msad->end();++it)
         msa->insert(*it);
     std::cerr<<"Total inserted: " <<cnt<<" records"<<std::endl;
@@ -310,7 +355,7 @@ bool mafdb::export_db(const std::string& fp )
     ar << BOOST_SERIALIZATION_NVP(*this);
     return true;
 }
-std::string mafdb::get(const size_t& l , const size_t& r)
+std::string mafdb::get(const unsigned& l , const unsigned& r)
 {
 
 #if DEBUG

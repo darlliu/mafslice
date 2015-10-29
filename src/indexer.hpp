@@ -23,13 +23,10 @@ typedef kyotocabinet::HashDB _DB;
 typedef std::map<std::string, std::vector<std::shared_ptr<_DB>>> DB;
 
 
-#if USE_BINARY_ARCHIVE
-typedef boost::archive::binary_oarchive OARCHIVE;
-typedef boost::archive::binary_iarchive IARCHIVE;
-#else
+typedef boost::archive::binary_oarchive BOARCHIVE;
+typedef boost::archive::binary_iarchive BIARCHIVE;
 typedef boost::archive::text_oarchive OARCHIVE;
 typedef boost::archive::text_iarchive IARCHIVE;
-#endif
 
 typedef enum {
     hash = 0,

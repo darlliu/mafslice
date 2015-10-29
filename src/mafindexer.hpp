@@ -14,6 +14,7 @@
 #define MAFINDEXER
 #include"indexer.hpp"
 #include<kccompare.h>
+#include<iterator>
 #include<boost/functional/hash.hpp>
 #include<boost/functional/hash/extensions.hpp>
 #include<boost/intrusive/avl_set.hpp>
@@ -23,11 +24,11 @@ class inode :public avl_set_base_hook < optimize_size <true> >
     //size_t hash;
 
     public:
-        size_t l,r;
+        unsigned l,r;
         short p;
         avl_set_member_hook<> member_hook_;
-        inode (const size_t& ll,
-               const size_t& rr,
+        inode (const unsigned& ll,
+               const unsigned& rr,
                short pp=0):
             l(ll), r(rr), p(pp)  {};
         friend bool operator < (const inode& l, const inode& r)
@@ -58,11 +59,11 @@ class CodedSizeTComparator :public kyotocabinet::Comparator
         int32_t compare(const char* akbuf, size_t aksiz,
                 const char* bkbuf, size_t bksiz)
         {
-             size_t l1,r1, l2, r2;
-             l1= ((size_t*)akbuf) [0];
-             r1= ((size_t*)akbuf) [1];
-             l2= ((size_t*)bkbuf) [0];
-             r2= ((size_t*)bkbuf) [1];
+             unsigned l1,r1, l2, r2;
+             l1= ((unsigned*)akbuf) [0];
+             r1= ((unsigned*)akbuf) [1];
+             l2= ((unsigned*)bkbuf) [0];
+             r2= ((unsigned*)bkbuf) [1];
              if (l1<l2) return -1;
              if (l1>l2) return 1;
              if (r1>r2) return -1;
@@ -78,9 +79,9 @@ class HashComparator :public kyotocabinet::Comparator
         int32_t compare(const char* akbuf, size_t aksiz,
                 const char* bkbuf, size_t bksiz)
         {
-             size_t l1,l2;
-             l1= ((size_t*)akbuf) [0];
-             l2= ((size_t*)bkbuf) [0];
+             unsigned l1,l2;
+             l1= ((unsigned*)akbuf) [0];
+             l2= ((unsigned*)bkbuf) [0];
              if (l1>l2) return 1;
              else if (l1<l2) return -1;
              else if (l1>l2) return 1;
@@ -108,7 +109,7 @@ class mafdb : public seqdb
             if (init) for (auto &chr:chrs)
                 clear_index(chr);
         };
-        size_t hasher(const std::string& s,const size_t& l , const size_t& r)
+        unsigned hasher(const std::string& s,const unsigned& l , const unsigned& r)
         {
             std::size_t seed = 0;
             boost::hash_combine(seed,l);
@@ -116,7 +117,7 @@ class mafdb : public seqdb
             boost::hash_combine(seed,s);
             return seed;
         };
-        size_t hasher(const size_t& l , const size_t& r)
+        unsigned hasher(const unsigned& l , const unsigned& r)
         {
             std::size_t seed = 0;
             boost::hash_combine(seed,l);
@@ -125,6 +126,7 @@ class mafdb : public seqdb
         };
         void clear_index (const std::string&);
         void load_index (const std::string&);
+        void save_index(const std::string& , const std::vector<inode>&);
         void init_tree();
         // routine to save/load indices
         /*
@@ -136,14 +138,13 @@ class mafdb : public seqdb
         bool load_db (const std::string & dbname);
         bool export_db (const std::string & dbname);
         //bool export_db (const std::string & dbname);
-        std::string get(const size_t& l , const size_t& r);
-        std::string get(const std::string& chr, const size_t& l,
-                const size_t& r)
+        std::string get(const unsigned& l , const unsigned& r);
+        std::string get(const std::string& chr, const unsigned& l , const unsigned& r)
         {
-            set_chr(chr);
-            return get(l,r);
+             set_chr(chr);
+             return get(l,r);
         };
-        auto get_interval(const size_t& l , const size_t& r)
+        auto get_interval(const unsigned& l , const unsigned& r)
         {
             //have to define here to use auto
             if (r==0) throw("Unexpected interval r=0");
@@ -184,7 +185,7 @@ class mafdb : public seqdb
         std::string ref;
         MSAMAP msatrees;
         MSADATA msadata;
-        boost::hash<size_t> h_;
+        boost::hash<unsigned> h_;
         boost::hash<std::string> hs_;
         bool init;
         //std::map<std::string, size_t> treesizes;

@@ -56,8 +56,11 @@ int main (int ac, char** av){
             std::cerr << "Terminating"<<std::endl;
             return 1;
         }
-        //if (vm.count("test"))
-            //s.test();
+        if (vm.count("test"))
+        {
+            s.init_tree();
+            s.get("chrY",16384000,16584000);
+        }
     }
     else
     {
@@ -80,8 +83,10 @@ int main (int ac, char** av){
             std::cerr << "Terminating"<<std::endl;
             return 1;
         }
-        //if (vm.count("test"))
-            //s.test();
+        if (vm.count("test"))
+        {
+            s.get("chrY",1350000,1380000);
+        }
     }
     return 0 ;
 }
