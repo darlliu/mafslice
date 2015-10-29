@@ -20,6 +20,7 @@
 
 #define USE_BINARY_ARCHIVE 0
 #define USE_DBT 0
+#define DEBUG 1
 
 #if USE_BINARY_ARCHIVE
 #include <boost/archive/binary_iarchive.hpp>

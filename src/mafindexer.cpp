@@ -237,12 +237,14 @@ void mafdb::load_index(const std::string& chr)
     for (auto it = msad->begin(); it!=msad->end();++it)
         msa->insert(*it);
     std::cerr<<"Total inserted: " <<cnt<<" records"<<std::endl;
+#if DEBUG
     for (size_t ll=1000; ll<msad->back().l; ll*=2)
     {
         auto it = msa->lower_bound(inode(ll, ll+ll/2));
         if (it!=msa->end())
             std::cerr << "Trying to find a record >"<<ll<<" : "<<it->l<<","<<it->r<<"@"<<it->p<<std::endl;
     }
+#endif
     return;
 }
 void mafdb::init_tree()
@@ -311,8 +313,12 @@ bool mafdb::export_db(const std::string& fp )
 std::string mafdb::get(const size_t& l , const size_t& r)
 {
 
+#if DEBUG
     std::cerr <<" Getting matches for "<<l <<" , "<<r <<std::endl;
     auto pp = get_interval(l,r);
+
+    std::cerr<< " last one at : "<< pp.first->l << " , " << pp.first->r <<std::endl;
+#endif
     return "";
 }
 // get the content from index

@@ -32,14 +32,12 @@ LINK_DIRECTORIES(
 
 
 message("Configuring core C++ binaries")
-add_library(indexer SHARED ${SOURCE_DIR}/indexer.cpp ${SOURCE_DIR}/mafindexer.cpp)
-target_link_libraries(indexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
 
 FIND_PACKAGE(Boost 1.59.0)
 FIND_PACKAGE(PythonLibs 2.7.10)
-add_executable(seqslice.exe ${SOURCE_DIR}/main.cpp)
-target_link_libraries(seqslice.exe indexer boost_program_options)
-add_executable(mafslice.exe ${SOURCE_DIR}/main2.cpp)
+add_library(indexer SHARED ${SOURCE_DIR}/indexer.cpp ${SOURCE_DIR}/mafindexer.cpp)
+target_link_libraries(indexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
+add_executable(mafslice.exe ${SOURCE_DIR}/main.cpp)
 target_link_libraries(mafslice.exe indexer boost_program_options)
 IF(Boost_FOUND AND PYTHONLIBS_FOUND)
     message("BOOST 1.59 AND PYTHON 2.7.10 FOUND, configuring python interface")

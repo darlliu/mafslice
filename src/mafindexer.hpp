@@ -17,7 +17,6 @@
 #include<boost/functional/hash.hpp>
 #include<boost/functional/hash/extensions.hpp>
 #include<boost/intrusive/avl_set.hpp>
-#include<boost/container/flat_map.hpp>
 using namespace boost::intrusive;
 class inode :public avl_set_base_hook < optimize_size <true> >
 {
@@ -155,18 +154,22 @@ class mafdb : public seqdb
             for (; rit!=msa->begin(); --rit){
                 if (rit->r > l)
                 {
+#if DEBUG
                     //if (cnt ==0)
                     std::cerr << " Found a match at : "<< rit->l << " , " << rit->r <<std::endl;
                     ++cnt;
+#endif
                 }
                 else break;
             }
+#if DEBUG
+            std::cerr << " Found "<<cnt<< " matches ";
+#endif
             //check the last one as well as begin() may be included
-            std::cerr << " Found "<<cnt<< " matches, last one at : "<< rit->l << " , " << rit->r <<std::endl;
             if (rit->r > l )
-                return std::pair<decltype(it) , decltype(it)> (++rit, it);
-            else
                 return std::pair<decltype(it) , decltype(it)> (rit, it);
+            else
+                return std::pair<decltype(it) , decltype(it)> (++rit, it);
         };
         template <class archive>
             void serialize(archive & ar, const unsigned ver)
