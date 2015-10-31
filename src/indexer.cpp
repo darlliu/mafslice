@@ -59,6 +59,34 @@ bool seqdb::import (const std::string& dirname)
     }
     return true;
 };
+void seqdb::import_chr(const std::string& fname)
+{
+    using namespace boost::filesystem;
+    auto fp=path(fname);
+    if (exists(fp) && fname.find(".fa")!=std::string::npos)
+    {
+        std::cerr << " Now reading " << fname << std::endl;
+    }
+    else
+    {
+        throw ("File does not exist: "+fname);
+    }
+    auto fn = fp.filename().string();
+    fapaths[chr]=fp.string();
+    boost::replace_last (fn, ".fa","");
+    boost::replace_last (fn, ".fasta","");
+    chrs.push_back(fn);
+    set_chr(fn);
+    fapaths[chr]=fp.string();
+#if USE_DBT
+    auto dbp = dbpath+"/"+chr+".kct";
+#else
+    auto dbp = dbpath+"/"+chr+".kch";
+#endif
+    dbpaths [chr] = dbp;
+    init_db(chrs, dbs);
+    import_chr();
+}
 
 void seqdb::import_chr()
 {

@@ -47,7 +47,10 @@ int main (int ac, char** av){
             }
         } else if (vm.count("create")) {
             std::cerr << "Creating a db!"<<std::endl;
-            s.import(gph);
+            if (vm.count("genome-file"))
+                s.import_chr(gpf);
+            else
+                s.import(gph);
             if (s.export_db(cfg))
                 std::cerr << "Test export Success! " <<std::endl;
             else
@@ -74,7 +77,10 @@ int main (int ac, char** av){
             }
         } else if (vm.count("create")) {
             std::cerr << "Creating a db!"<<std::endl;
-            s.import(gph);
+            if (vm.count("genome-file,f"))
+                s.import_chr(gpf);
+            else
+                s.import(gph);
             if (s.export_db(cfg))
                 std::cerr << "Test export Success! " <<std::endl;
             else

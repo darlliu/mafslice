@@ -44,11 +44,9 @@ bool mafdb::import (const std::string& dirname)
     for (std::string fn: fns)
     {
         boost::replace_last (fn, ".maf","");
-        //boost::replace_last (fn, ".fasta","");
         chrs.push_back(fn);
     }
     init_db(chrs, dbs);
-    //init_db(chrs, dbs2);
     for (unsigned i =0; i < fps.size(); ++i)
     {
         auto chr = chrs[i];
@@ -57,16 +55,41 @@ bool mafdb::import (const std::string& dirname)
         fapaths [chr] = chrp;
 #if USE_DBT
         auto dbp = dbpath+"/"+chr+".MSA.kct";
-        //auto dbp2 = dbpath+"/"+chr+".MSAinfo.kct";
 #else
         auto dbp = dbpath+"/"+chr+".MSA.kch";
-        //auto dbp2 = dbpath+"/"+chr+".MSAinfo.kch";
 #endif
         dbpaths [chr] = dbp;
         //dbpaths2 [chr] = dbp2;
         import_chr();
     }
     return true;
+}
+void mafdb::import_chr(const std::string& fname)
+{
+    using namespace boost::filesystem;
+    auto fp=path(fname);
+    if (exists(fp) && fname.find(".maf")!=std::string::npos)
+    {
+        std::cerr << " Now reading " << fname << std::endl;
+    }
+    else
+    {
+        std::cerr << "File does not exist: " <<fname<<std::endl;
+        return;
+    }
+    auto fn = fp.filename().string();
+    boost::replace_last (fn, ".maf","");
+    chrs.push_back(fn);
+    set_chr(fn);
+    fapaths[chr]=fp.string();
+#if USE_DBT
+        auto dbp = dbpath+"/"+chr+".MSA.kct";
+#else
+        auto dbp = dbpath+"/"+chr+".MSA.kch";
+#endif
+    dbpaths [chr] = dbp;
+    init_db(chrs, dbs);
+    import_chr();
 }
 void mafdb::import_chr ()
 {
@@ -88,12 +111,12 @@ void mafdb::import_chr ()
     std::cout<< "Opened file "<<chrfp << " On chr: "<< \
         chr <<" Size: "<<fsize<<" Est. Recs: <"<<fsize/2000<<std::endl;
     fsize/=2000;
+    inodes.reserve(fsize);
     if (fsize > 1<<20 )
     {
         std::cout<< "Size is too big, trimming into "<< (1<<20)<<std::endl;
         fsize=1<<20;
     }
-    inodes.reserve(fsize);
     auto tune = [&](decltype(dbv[0]) &db, short pfx=0){
         auto dbp = dbpaths[chr];
         std::cerr<<std::endl;
@@ -172,11 +195,10 @@ void mafdb::import_chr ()
                 rstart = start;
                 rend = end;
                 inodes.push_back (inode (rstart, rend, dbv.size()-1));
-            } else {
-                if (tmp.size()>0) tmp+="\t";
-                tmp += species+" "+std::to_string(start) + " " + std::to_string(end)\
-                       +" "+sign+seq;
             }
+            if (tmp.size()>0) tmp+="\t";
+            tmp += species+" "+std::to_string(start) + " " + std::to_string(end)\
+                   +" "+sign+seq;
         } else continue;
     }
     {
@@ -208,6 +230,7 @@ void mafdb::save_index(const std::string& chr, const std::vector<inode>& v)
         f.write((char*) &it.r, sizeof(unsigned));
         f.write((char*) &it.p, sizeof(short));
     }
+    f.close();
     return;
 }
 void mafdb::clear_index(const std::string& chr)
@@ -268,12 +291,14 @@ void mafdb::load_index(const std::string& chr)
             save_index(chr,*msad);
         } else {
             f.read((char*) &sz, sizeof(size_t));
-            for (size_t i=0; i<sz; ++i)
+            for (cnt=0; cnt<sz; ++cnt)
             {
                 f.read((char*) &l, sizeof(unsigned));
                 f.read((char*) &r, sizeof(unsigned));
                 f.read((char*) &p, sizeof(short));
-                msad->push_back(inode(l,r,p));
+                msad->push_back(inode(l,l+r,p));
+                if (cnt%5000 ==0)
+                    std::cerr << ".";
             }
             f.close();
         }

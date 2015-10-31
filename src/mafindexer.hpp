@@ -135,6 +135,7 @@ class mafdb : public seqdb
 
         bool import (const std::string& dirname);
         void import_chr();
+        void import_chr(const std::string&);
         bool load_db (const std::string & dbname);
         bool export_db (const std::string & dbname);
         //bool export_db (const std::string & dbname);
