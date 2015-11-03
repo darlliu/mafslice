@@ -6,14 +6,14 @@ int main (int ac, char** av){
             mafslice.exe --load --config CONFIG.CFG [--test]\n\
             mafslice.exe --create --config CONFIG.CFG --genome-folder FOLDER --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]\n\
             mafslice.exe --create --config CONFIG.CFG --genome-file FILE --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]\n\
-            mafslice.exe --assemble --config CONFIG.CFG --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]");
+            mafslice.exe --assemble --config CONFIG.CFG --genome-folder FOLDER --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]");
     std::string dbname, dbpath, gph, gpf,cfg,ref;
     unsigned long cks;
     desc.add_options()
         ("help,h","list the arguments")
         ("create", "Create a new DB")
         ("test", "Run a test at the end of the program")
-        ("assemble", "Assemble pre-existing DB files into DB")
+        ("assemble", "Assemble pre-existing DB files into DB. Must also provide the genome files location.")
         ("load,L", "Load a config file instead of creating a DB.\nNote: If you choose this mode, you cannot create, assemble DB.")
         ("config,C", po::value<std::string>(&cfg) ->default_value("./db.cfg"),
          "Path to the config file.\nNote: Config file stores relative paths. Make sure to open them in the correct folder!")
@@ -51,14 +51,18 @@ int main (int ac, char** av){
                 s.import_chr(gpf);
             else
                 s.import(gph);
-            if (s.export_db(cfg))
-                std::cerr << "Test export Success! " <<std::endl;
-            else
-                std::cerr << "Test export Fail!! " <<std::endl;
+        } else if (vm.count("assemble")) {
+            std::cerr << "Assembling a db!"<<std::endl;
+            s.toggle_assemble ();
+            s.import(gph);
         } else {
-            std::cerr << "Terminating"<<std::endl;
+            std::cerr << "No mode selected, terminating"<<std::endl;
             return 1;
         }
+        if (s.export_db(cfg))
+            std::cerr << "Saved config! " <<std::endl;
+        else
+            std::cerr << "Save config failed! " <<std::endl;
         if (vm.count("test"))
         {
             s.init_tree();
@@ -81,14 +85,18 @@ int main (int ac, char** av){
                 s.import_chr(gpf);
             else
                 s.import(gph);
-            if (s.export_db(cfg))
-                std::cerr << "Test export Success! " <<std::endl;
-            else
-                std::cerr << "Test export Fail!! " <<std::endl;
+        } else if (vm.count("assemble")) {
+            std::cerr << "Assembling a db!"<<std::endl;
+            s.toggle_assemble ();
+            s.import(gph);
         } else {
-            std::cerr << "Terminating"<<std::endl;
+            std::cerr << "No mode selected, terminating"<<std::endl;
             return 1;
         }
+        if (s.export_db(cfg))
+            std::cerr << "Saved config! " <<std::endl;
+        else
+            std::cerr << "Save config failed! " <<std::endl;
         if (vm.count("test"))
         {
             s.get("chrY",1350000,1380000);

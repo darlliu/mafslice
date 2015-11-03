@@ -43,12 +43,13 @@ class seqdb {
         seqdb (const std::string & name, const size_t& sz, const std::string& dbp = "./test",
                 const INDEXTYPE& idxtype=increment):
             name (name), chunksz(sz), indextype(idxtype),
-            dbpath(dbp), chr(""){};
+            dbpath(dbp), chr(""), assemble(false){};
         seqdb(): seqdb("default", 1e4) {};
         ~seqdb()
         {
             close_db(dbs);
         };
+        void toggle_assemble (){assemble=!assemble;};
         virtual bool import (const std::string&);
         //import from a fasta file and build a db
         virtual void import_chr();
@@ -113,6 +114,7 @@ class seqdb {
         DB dbs;
         SIZES sizes, postfixes;
         NAMES fapaths, dbpaths;
+        bool assemble;
 };
 
 #endif

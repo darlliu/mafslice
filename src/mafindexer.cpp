@@ -142,11 +142,17 @@ void mafdb::import_chr ()
 #endif
         auto dbp2=dbp;
         if (pfx>0) dbp2 = dbp+"."+std::to_string(pfx-1);
-        if (!db->open(dbp2, _DB::OWRITER | _DB::OCREATE))
-        {
+        if (assemble){
+            if (!db->open(dbp2, _DB::OREADER))
+            {
+                throw ("Error opening DB: "+std::string(db->error().name()));
+            }
 
-            std::cerr << "open error: " << db->error().name() << std::endl;
-            throw ("Error opening DB");
+        } else {
+            if (!db->open(dbp2, _DB::OWRITER | _DB::OCREATE))
+            {
+                throw ("Error opening DB: "+std::string(db->error().name()));
+            }
         }
         return dbp2;
     };
@@ -169,7 +175,7 @@ void mafdb::import_chr ()
                 if (idx % 5000 ==0)
                 {
                     std::cerr << "@" ;
-                    db->set_bulk(data,false);
+                    if(!assemble) db->set_bulk(data,false);
                     std::cerr << idx << "/"<<total<<" .";
                     data.clear();
                     if (idx > 1<<20)
@@ -203,7 +209,7 @@ void mafdb::import_chr ()
     }
     {
         std::cerr << "@" ;
-        db->set_bulk(data,false);
+        if (!assemble) db->set_bulk(data,false);
         total+=idx;
         std::cerr << idx << "/"<<total<<" .";
         data.clear();
@@ -291,6 +297,7 @@ void mafdb::load_index(const std::string& chr)
             save_index(chr,*msad);
         } else {
             f.read((char*) &sz, sizeof(size_t));
+            msad->reserve(sz);
             for (cnt=0; cnt<sz; ++cnt)
             {
                 f.read((char*) &l, sizeof(unsigned));
@@ -320,18 +327,18 @@ void mafdb::load_index(const std::string& chr)
 void mafdb::init_tree()
 {
     if (init) return;
-    size_t sz_all=0;
+    //size_t sz_all=0;
     std::cerr << "Trying to initialize AMSet for MSA" << std::endl;
     for (auto &chr: chrs){
-        auto sz= sizes[chr];
-        sz_all+=sz;
+        //auto sz= sizes[chr];
+        //sz_all+=sz;
         msadata[chr]=std::shared_ptr <std::vector<inode>> (new std::vector<inode>);
-        msadata[chr]->reserve(sz);
+        //msadata[chr]->reserve(sz);
         msatrees[chr]=std::shared_ptr <AMSet> (new AMSet);
         load_index(chr);
     }
     init = true;
-    std::cerr << "Total elements: " <<sz_all<< std::endl;
+    //std::cerr << "Total elements: " <<sz_all<< std::endl;
     return;
 }
 bool mafdb::load_db (const std::string & fp)

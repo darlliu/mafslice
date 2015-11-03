@@ -1,5 +1,4 @@
 #include "indexer.hpp"
-
 bool seqdb::import (const std::string& dirname)
 {
     using namespace boost::filesystem;
@@ -93,9 +92,18 @@ void seqdb::import_chr()
     auto chrfp = fapaths[chr];
     auto dbp = dbpaths[chr];
     auto db = dbs[chr][0];
-    if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
-    {
-        std::cerr << "open error: " << db->error().name() << std::endl;
+    if (assemble){
+        if (!db->open(dbp, _DB::OREADER))
+        {
+            throw("open error (assemble): " + std::string(db->error().name()));
+        }
+
+    } else {
+        if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
+        {
+            throw("open error : " + std::string(db->error().name()));
+        }
+
     }
     size_t idx = 0;
     std::ifstream ifs (chrfp);
@@ -108,7 +116,7 @@ void seqdb::import_chr()
         tmp += line;
         if (tmp.size()>chunksz)
         {
-            if (!db->set(std::to_string(idx), tmp.substr(0, chunksz))){
+            if ((!assemble)&&!db->set(std::to_string(idx), tmp.substr(0, chunksz))){
                 throw( "Error adding a value to db "+ chr);
             };
             idx+=chunksz;
@@ -116,7 +124,7 @@ void seqdb::import_chr()
         }
     }
     ifs.close();
-    db->set(std::to_string(idx), tmp);
+    if (!assemble) db->set(std::to_string(idx), tmp);
     idx+= tmp.size();
     std::cout << "Loaded length "<<idx<<std::endl;
     sizes[chr] = idx;
