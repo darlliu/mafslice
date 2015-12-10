@@ -52,6 +52,7 @@ class inode :public avl_set_base_hook < optimize_size <true> >
 
 };
 
+
 class CodedSizeTComparator :public kyotocabinet::Comparator
 {
     public:
@@ -139,6 +140,7 @@ class mafdb : public seqdb
         bool load_db (const std::string & dbname);
         bool export_db (const std::string & dbname);
         //bool export_db (const std::string & dbname);
+        void extract_intervals (const inode&, std::vector<interval>&);
         std::string get(const unsigned& l , const unsigned& r);
         std::string get(const std::string& chr, const unsigned& l , const unsigned& r)
         {
@@ -150,7 +152,7 @@ class mafdb : public seqdb
             //have to define here to use auto
             if (r==0) throw("Unexpected interval r=0");
             auto msa = msatrees[chr];
-            auto it = msa->upper_bound(inode(r, r+1));
+            auto it = msa->upper_bound(inode(r+1, r+1));
             auto rit = it;
             int cnt = 0;
             for (; rit!=msa->begin(); --rit){
@@ -168,6 +170,7 @@ class mafdb : public seqdb
             std::cerr << " Found "<<cnt<< " matches ";
 #endif
             //check the last one as well as begin() may be included
+            //to get content just do first++ -> second
             if (rit->r > l )
                 return std::pair<decltype(it) , decltype(it)> (rit, it);
             else

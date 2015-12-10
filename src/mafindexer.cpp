@@ -393,10 +393,60 @@ std::string mafdb::get(const unsigned& l , const unsigned& r)
 #if DEBUG
     std::cerr <<" Getting matches for "<<l <<" , "<<r <<std::endl;
     auto pp = get_interval(l,r);
-
+    std::vector <interval> hits ;
+    for (; pp.first!=pp.second; pp.first++){
+        extract_intervals(*pp.first, hits);
+    }
     std::cerr<< " last one at : "<< pp.first->l << " , " << pp.first->r <<std::endl;
 #endif
     return "";
 }
 // get the content from index
+void mafdb::extract_intervals (const inode& node, std::vector <interval>& out){
+    auto dbv = dbs [chr];
+    if (node.p < 0 || node.p >= dbv.size()) throw("Incorrect db part info!");
+    auto db = dbv[node.p];
+    unsigned rr[2];
+    rr[0]=node.l;
+    rr[1]=node.r-node.l;
+    std::string key, val;
+    key = std::string((char*)&rr, sizeof(rr));
+    if (!db->get(key, &val))
+    {
+        std::cerr << "No match for "<<key <<std::endl;
+        return;
+    }
+    std::cerr << " Fetched value "<< val << " for "<< node.p << " , "<<node.l<<" , "<<node.r <<std::endl;
+    std::stringstream ss (val);
+    std::string rf ;
+    float score;
+    ss>> score;
+
+    while (ss.good() && !ss.eof()){
+        interval iv ;
+        ss>>rf;
+        auto bk = rf.find(".");
+        if (bk==std::string::npos){
+            std::cerr<<"Error breaking ref: "<<rf <<std::endl;
+        } else {
+            iv.ref = rf.substr(0, bk);
+            iv.chr = rf.substr(bk+1);
+        }
+        ss >> iv.l >> iv.r >> iv.seq;
+        iv.score = score;
+        iv.r +=iv.l;
+        if (iv.seq[0]=='-'){
+            iv.strand= false;
+        }
+        iv.seq = iv.seq.substr(1);
+        if (iv.ref != "mm10"){
+             iv.tt=matching;
+        }
+        out.push_back(iv);
+        std::cerr << "Fetched an inverval " <<iv.ref <<" , "<<iv.chr<<" , "<<iv.l<<","<<iv.r
+            << ","<<iv.seq << ","<<iv.score<<","<<iv.strand <<std::endl;
+    }
+    return;
+
+}
 

@@ -36,6 +36,21 @@ typedef enum {
     increment=0,
     custom
 } INDEXTYPE; //these are optional identifiers left unused for now
+typedef enum {
+    reference=0,
+    matching,
+    other
+} INTERVALTYPE;
+
+struct interval
+{
+    public:
+        std::string ref, chr, seq;
+        unsigned l=-1,r=-1;
+        INTERVALTYPE tt = reference;
+        float score = 0.0;
+        bool strand=true;
+};
 
 class seqdb {
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
@@ -68,6 +83,7 @@ class seqdb {
         };
         virtual std::string get (const size_t&, const size_t&);
         virtual std::string get (const std::string& key) {return "";};
+        virtual std::string get (const interval& itv) {return get(itv.chr, itv.l, itv.r);};
         void init_db(const std::vector<std::string>&, DB&);
         void close_db(DB& dbs){
             for (auto it=dbs.begin(); it!=dbs.end();++it)

@@ -66,7 +66,9 @@ int main (int ac, char** av){
         if (vm.count("test"))
         {
             s.init_tree();
-            s.get("chrY",16384000,16584000);
+            //s.get("chr1",3218024,3218037);
+            s.get("chr1",4417696,4417709);
+
         }
     }
     else
