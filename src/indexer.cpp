@@ -131,6 +131,61 @@ void seqdb::import_chr()
     return;
 };
 
+bool seqdb::import_feed()
+{
+    std::cerr <<"..... Now importing from stdin ....."<<std::endl;
+    std::string line, tmp("");
+    _DB db;
+    size_t idx = 0;
+    bool flag= false;
+    auto inner = [&](){
+        if (flag)
+        {
+            db.set(std::to_string(idx), tmp);
+            idx+= tmp.size();
+            std::cout << "Loaded length "<<idx<<std::endl;
+            sizes[chr] = idx;
+            idx=0;
+            tmp="";
+            flag=false;
+            db.close();
+        }
+    };
+    while (std::cin)
+    {
+        std::getline(std::cin, line);
+        if (line.size()==0) continue;
+        if (line[0]=='>')
+        {
+            auto chr = line.substr(1);
+            auto dbp= dbpath+"/"+chr+".kch";
+            std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
+            inner();
+            if (!db.open(dbp, _DB::OWRITER | _DB::OCREATE))
+            {
+                std::cerr<< "open error : "<<db.error().name()<<std::endl;
+                return false;
+            } else {
+                 flag=true;
+            }
+            continue;
+        }
+        tmp += line;
+        if (tmp.size()>chunksz)
+        {
+            if (!db.set(std::to_string(idx), tmp.substr(0, chunksz))){
+                throw( "Error adding a value to db "+ chr);
+            };
+            idx+=chunksz;
+            tmp = tmp.substr(chunksz);
+        }
+
+    }
+    inner();
+    return true;
+
+};
+
 void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
 {
     if (dbs.size()>0) close_db(dbs);
@@ -169,6 +224,26 @@ std::string seqdb::get(const size_t& l, const size_t& r)
     return val.substr(l-idx0, r-l);
 
 };
+bool seqdb::export_db_kch(const std::string& kdbname)
+{
+    std::cerr << "Trying to serialize into "<< kdbname <<std::endl;
+    std::string serial_str;
+    boost::iostreams::back_insert_device<std::string> inserter(serial_str);
+    boost::iostreams::stream<boost::iostreams::back_insert_device<std::string> > s(inserter);
+    OARCHIVE oa (s);
+    oa << BOOST_SERIALIZATION_NVP(*this);
+    s.flush();
+
+    _DB db;
+    if (!db.open(kdbname, _DB::OWRITER|_DB::OCREATE))
+    {
+        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
+        return false;
+    }
+    db.set("seqdb "+name,serial_str);
+    return true;
+
+}
 
 bool seqdb::export_db(const std::string& fp )
 {
@@ -184,17 +259,8 @@ bool seqdb::export_db(const std::string& fp )
     return true;
 };
 
-bool seqdb::load_db(const std::string& fp )
+bool seqdb::load_db_()
 {
-    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
-    std::ifstream ifs (fp);
-    if (!ifs.is_open())
-    {
-        std::cerr << "Error opening file: "<<fp <<std::endl;
-        return false;
-    }
-    IARCHIVE ar(ifs);
-    ar >> BOOST_SERIALIZATION_NVP(*this);
     for (auto it:dbpaths)
     {
         auto db = std::shared_ptr <_DB>(new _DB);
@@ -206,4 +272,38 @@ bool seqdb::load_db(const std::string& fp )
         dbs[it.first].push_back(db);
     }
     return true;
+};
+
+bool seqdb::load_db(const std::string& fp )
+{
+    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
+    std::ifstream ifs (fp);
+    if (!ifs.is_open())
+    {
+        std::cerr << "Error opening file: "<<fp <<std::endl;
+        return false;
+    }
+    IARCHIVE ar(ifs);
+    ar >> BOOST_SERIALIZATION_NVP(*this);
+    return load_db_();
+};
+
+bool seqdb::load_db_kch(const std::string& kdbname, const std::string& key )
+{
+    std::cerr << "Trying to deserialize from "<< kdbname <<std::endl;
+    std::string serial_str;
+
+    _DB db;
+    if (!db.open(kdbname, _DB::OREADER))
+    {
+        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
+        return false;
+    }
+    db.get("seqdb "+key,&serial_str);
+
+    boost::iostreams::basic_array_source<char> device(serial_str.data(), serial_str.size());
+    boost::iostreams::stream<boost::iostreams::basic_array_source<char> > s(device);
+    IARCHIVE ia(s);
+    ia >> BOOST_SERIALIZATION_NVP(*this);
+    return load_db_();
 };

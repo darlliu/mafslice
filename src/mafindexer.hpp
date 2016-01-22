@@ -140,7 +140,10 @@ class mafdb : public seqdb
         void import_chr();
         void import_chr(const std::string&);
         bool load_db (const std::string & dbname);
+        bool load_db_kch(const std::string &, const std::string&);
+        bool load_db_();
         bool export_db (const std::string & dbname);
+        bool export_db_kch(const std::string &);
         //bool export_db (const std::string & dbname);
         INTERVAL_PAIR extract_intervals (const inode&);
         INTERVAL_PAIR filter_intervals (const unsigned&, const unsigned&,
@@ -189,13 +192,10 @@ class mafdb : public seqdb
             ar & boost::serialization::base_object<seqdb>(*this);
             ar & ref;
             ar & sizes;
-            ar & TESTS;
-
             //ar & treesizes;
         };
 
     private:
-        seqdb TESTS;
         std::string ref;
         MSAMAP msatrees;
         MSADATA msadata;

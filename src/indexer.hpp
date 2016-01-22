@@ -66,6 +66,7 @@ class seqdb {
         };
         void toggle_assemble (){assemble=!assemble;};
         virtual bool import (const std::string&);
+        virtual bool import_feed();
         //import from a fasta file and build a db
         virtual void import_chr();
         //import a chromosome file
@@ -92,7 +93,10 @@ class seqdb {
             dbs.clear();
         };
         virtual bool load_db(const std::string &);
+        virtual bool load_db_kch(const std::string &, const std::string&);
+        virtual bool load_db_();
         virtual bool export_db(const std::string &);
+        virtual bool export_db_kch(const std::string &);
         void set_chr (const std::string& c) {chr = c;} ;
         void set(const std::string&, const std::string & );
         void del(const std::string&);

@@ -341,17 +341,8 @@ void mafdb::init_tree()
     //std::cerr << "Total elements: " <<sz_all<< std::endl;
     return;
 }
-bool mafdb::load_db (const std::string & fp)
+bool mafdb::load_db_()
 {
-    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
-    std::ifstream ifs (fp);
-    if (!ifs.is_open())
-    {
-        std::cerr << "Error opening file: "<<fp <<std::endl;
-        return false;
-    }
-    IARCHIVE ar(ifs);
-    ar >> BOOST_SERIALIZATION_NVP(*this);
     for (auto chr:chrs)
     {
         for (int i =0; i<postfixes[chr]; ++i)
@@ -372,8 +363,40 @@ bool mafdb::load_db (const std::string & fp)
         }
     }
     init_tree();
+};
+bool mafdb::load_db (const std::string & fp)
+{
+    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
+    std::ifstream ifs (fp);
+    if (!ifs.is_open())
+    {
+        std::cerr << "Error opening file: "<<fp <<std::endl;
+        return false;
+    }
+    IARCHIVE ar(ifs);
+    ar >> BOOST_SERIALIZATION_NVP(*this);
+    load_db_();
     return true;
 }
+bool mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
+{
+    std::cerr << "Trying to deserialize from "<< kdbname <<std::endl;
+    std::string serial_str;
+
+    _DB db;
+    if (!db.open(kdbname, _DB::OREADER))
+    {
+        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
+        return false;
+    }
+    db.get("mafdb "+key,&serial_str);
+
+    boost::iostreams::basic_array_source<char> device(serial_str.data(), serial_str.size());
+    boost::iostreams::stream<boost::iostreams::basic_array_source<char> > s(device);
+    BIARCHIVE ia(s);
+    ia >> BOOST_SERIALIZATION_NVP(*this);
+    return load_db_();
+};
 bool mafdb::export_db(const std::string& fp )
 {
     std::cerr << "Trying to serialize into "<<fp <<std::endl;
@@ -386,6 +409,26 @@ bool mafdb::export_db(const std::string& fp )
     OARCHIVE ar(ofs);
     ar << BOOST_SERIALIZATION_NVP(*this);
     return true;
+}
+bool mafdb::export_db_kch(const std::string& kdbname)
+{
+    std::cerr << "Trying to serialize into "<< kdbname <<std::endl;
+    std::string serial_str;
+    boost::iostreams::back_insert_device<std::string> inserter(serial_str);
+    boost::iostreams::stream<boost::iostreams::back_insert_device<std::string> > s(inserter);
+    BOARCHIVE oa (s);
+    oa << BOOST_SERIALIZATION_NVP(*this);
+    s.flush();
+
+    _DB db;
+    if (!db.open(kdbname, _DB::OWRITER|_DB::OCREATE))
+    {
+        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
+        return false;
+    }
+    db.set("mafdb "+name,serial_str);
+    return true;
+
 }
 std::string mafdb::get(const unsigned& l , const unsigned& r)
 {
