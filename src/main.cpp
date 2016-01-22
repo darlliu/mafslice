@@ -68,6 +68,7 @@ int main (int ac, char** av){
             s.init_tree();
             //s.get("chr1",3218024,3218037);
             s.get("chr1",4417696,4417709);
+            s.get("chr1",4417696,4417719);
 
         }
     }

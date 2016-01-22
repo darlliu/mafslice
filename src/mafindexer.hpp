@@ -96,10 +96,12 @@ typedef avl_set <inode, compare<std::greater<inode>>> ASet;
 typedef member_hook <inode, avl_set_member_hook<>, &inode::member_hook_> MemberOption;
 typedef avl_multiset <inode, MemberOption> AMSet;
 
+typedef std::map<std::string, std::shared_ptr<AMSet>> MSAMAP;
+typedef std::map<std::string, std::shared_ptr<std::vector<inode>>> MSADATA;
+typedef std::pair<interval, std::vector<interval>> INTERVAL_PAIR;
+
 class mafdb : public seqdb
 {
-    typedef std::map<std::string, std::shared_ptr<AMSet>> MSAMAP;
-    typedef std::map<std::string, std::shared_ptr<std::vector<inode>>> MSADATA;
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
         mafdb (const std::string & name, const std::string& dbp, const std::string& ref)
@@ -140,7 +142,12 @@ class mafdb : public seqdb
         bool load_db (const std::string & dbname);
         bool export_db (const std::string & dbname);
         //bool export_db (const std::string & dbname);
-        void extract_intervals (const inode&, std::vector<interval>&);
+        INTERVAL_PAIR extract_intervals (const inode&);
+        INTERVAL_PAIR filter_intervals (const unsigned&, const unsigned&,
+                INTERVAL_PAIR &,  const bool& masked =true);
+        void flank_intervals (const unsigned&, const unsigned&,
+                std::vector<interval> &, std::vector<interval> &);
+
         std::string get(const unsigned& l , const unsigned& r);
         std::string get(const std::string& chr, const unsigned& l , const unsigned& r)
         {
@@ -180,12 +187,15 @@ class mafdb : public seqdb
             void serialize(archive & ar, const unsigned ver)
         {
             ar & boost::serialization::base_object<seqdb>(*this);
-            ar & BOOST_SERIALIZATION_NVP(ref);
-            ar & BOOST_SERIALIZATION_NVP(sizes);
+            ar & ref;
+            ar & sizes;
+            ar & TESTS;
+
             //ar & treesizes;
         };
 
     private:
+        seqdb TESTS;
         std::string ref;
         MSAMAP msatrees;
         MSADATA msadata;
