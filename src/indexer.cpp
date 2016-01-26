@@ -157,8 +157,10 @@ bool seqdb::import_feed()
         if (line.size()==0) continue;
         if (line[0]=='>')
         {
-            auto chr = line.substr(1);
+            chr = line.substr(1);
             auto dbp= dbpath+"/"+chr+".kch";
+            dbpaths[chr]=dbp;
+            chrs.push_back(chr);
             std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
             inner();
             if (!db.open(dbp, _DB::OWRITER | _DB::OCREATE))
