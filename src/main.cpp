@@ -19,6 +19,7 @@ int main (int ac, char** av){
         ("config,C", po::value<std::string>(&cfg) ->default_value("./db.cfg"),
          "Path to the config file.\nNote: Config file stores relative paths. Make sure to open them in the correct folder!")
         ("msa", "Create a MSA DB on maf files instead of a Seq DB on fasta files")
+        ("scaffold", "indicates whether or not the SeqDB is from unlinked scaffolds")
         ("use-db", "Use a KyotoCabinet DB to serialize and deserialize")
         ("cin", "Instead of loading genome file from a folder, load a stream of all genomes from stdin (fasta), chromosomes are separated via >chrX")
         ("dbname,N", po::value<std::string>(&dbname), "Name of the DB for the genomes")
@@ -61,7 +62,7 @@ int main (int ac, char** av){
                 s.import(gph);
         } else if (vm.count("assemble")) {
             std::cerr << "Assembling a db!"<<std::endl;
-            s.toggle_assemble ();
+            s.assemble=true;
             s.import(gph);
         } else {
             std::cerr << "No mode selected, terminating"<<std::endl;
@@ -87,8 +88,14 @@ int main (int ac, char** av){
     }
     else
     {
-        seqdb s(dbname, cks, dbpath);
+
         std::cerr << "running the program"<<std::endl;
+        seqdb s(dbname, cks, dbpath);
+        if (vm.count("scaffold"))
+        {
+            std::cerr << "Initializing a scaffold db"<<std::endl;
+            s.scaffold=true;
+        }
         if (vm.count("load")) {
             std::cerr << "Loading a config file" << cfg <<"\n";
             if (vm.count("use-db")){
@@ -110,7 +117,7 @@ int main (int ac, char** av){
                 s.import(gph);
         } else if (vm.count("assemble")) {
             std::cerr << "Assembling a db!"<<std::endl;
-            s.toggle_assemble ();
+            s.assemble=true;
             s.import(gph);
         } else {
             std::cerr << "No mode selected, terminating"<<std::endl;
@@ -129,6 +136,7 @@ int main (int ac, char** av){
         {
             std::cout <<"testing sequence get ::"<< s.get("chr6",0,400)<<std::endl;
         }
+
     }
     return 0 ;
 }

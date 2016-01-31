@@ -111,6 +111,7 @@ class mafdb : public seqdb
         {
             if (init) for (auto &chr:chrs)
                 clear_index(chr);
+            close_db(dbs);
         };
         unsigned hasher(const std::string& s,const unsigned& l , const unsigned& r)
         {
@@ -159,6 +160,16 @@ class mafdb : public seqdb
         };
         auto get_interval(const unsigned& l , const unsigned& r)
         {
+            if (r==0) throw("Unexpected interval r=0");
+            auto msa = msatrees[chr];
+            auto it = msa->upper_bound(inode(r+1, r+1));
+            for (auto rit=it; rit!=msa->begin(); --rit)
+                if (rit->r > l)
+                    return rit;
+            return it;
+        };
+        auto get_intervals(const unsigned& l , const unsigned& r)
+        {
             //have to define here to use auto
             if (r==0) throw("Unexpected interval r=0");
             auto msa = msatrees[chr];
@@ -195,7 +206,6 @@ class mafdb : public seqdb
             //ar & treesizes;
         };
 
-    private:
         std::string ref;
         MSAMAP msatrees;
         MSADATA msadata;

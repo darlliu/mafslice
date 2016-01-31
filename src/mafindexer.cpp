@@ -435,7 +435,7 @@ std::string mafdb::get(const unsigned& l , const unsigned& r)
 
 #if DEBUG
     std::cerr <<" Getting matches for "<<l <<" , "<<r <<std::endl;
-    auto pp = get_interval(l,r);
+    auto pp = get_intervals(l,r);
     for (; pp.first!=pp.second; pp.first++){
         auto hits = extract_intervals(*pp.first);
         auto filtered = filter_intervals(l, r, hits);
@@ -496,7 +496,7 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
         std::cerr << "Fetched an inverval " <<iv.ref <<" , "<<iv.chr<<" , "<<iv.l<<","<<iv.r
             << ","<<iv.seq << ","<<iv.score<<","<<iv.strand <<std::endl;
 #endif
-        }
+    }
     return out;
 }
 

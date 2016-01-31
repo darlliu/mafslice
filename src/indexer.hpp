@@ -58,13 +58,12 @@ class seqdb {
         seqdb (const std::string & name, const size_t& sz, const std::string& dbp = "./test",
                 const INDEXTYPE& idxtype=increment):
             name (name), chunksz(sz), indextype(idxtype),
-            dbpath(dbp), chr(""), assemble(false){};
+            dbpath(dbp), chr(""), assemble(false), scaffold(false){};
         seqdb(): seqdb("default", 1e4) {};
         ~seqdb()
         {
             close_db(dbs);
         };
-        void toggle_assemble (){assemble=!assemble;};
         virtual bool import (const std::string&);
         virtual bool import_feed();
         //import from a fasta file and build a db
@@ -105,6 +104,7 @@ class seqdb {
             void serialize(archive & ar, const unsigned ver)
             {
                 ar & name;
+                ar & scaffold;
                 ar & dbpath;
                 ar & chunksz;
                 ar & chrs;
@@ -119,7 +119,6 @@ class seqdb {
         size_t chunk_sz(){return chunksz;};
 
 
-    protected:
         std::string name, dbpath; //name of the db and the directory path for kyotocabinet
         size_t chunksz; //size of each chunk of sequence
 #if USE_DBT
@@ -134,7 +133,7 @@ class seqdb {
         DB dbs;
         SIZES sizes, postfixes;
         NAMES fapaths, dbpaths;
-        bool assemble;
+        bool assemble, scaffold;
 };
 
 #endif

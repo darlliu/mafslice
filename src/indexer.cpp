@@ -134,21 +134,34 @@ void seqdb::import_chr()
 bool seqdb::import_feed()
 {
     std::cerr <<"..... Now importing from stdin ....."<<std::endl;
-    std::string line, tmp("");
+    std::string line, tmp(""),dbp;
     _DB db;
+    if (scaffold)
+    {
+        std::cerr <<"This is a scaffold db, tuning to 100k size automatically."<<std::endl;
+        db.tune_buckets (1LL* 100000 * 2);
+        db.tune_options(kyotocabinet::HashDB::TLINEAR);
+        db.tune_map(2LL << 30);
+        db.tune_defrag(8);
+        dbp= dbpath+"/"+name+".kch";
+        if (!db.open(dbp, _DB::OWRITER | _DB::OCREATE))
+        {
+            std::cerr<< "open error : "<<db.error().name()<<std::endl;
+            return false;
+        }
+    }
     size_t idx = 0;
     bool flag= false;
-    auto inner = [&](){
+    auto inner = [&](const std::string& key){
         if (flag)
         {
-            db.set(std::to_string(idx), tmp);
+            db.set(key, tmp);
             idx+= tmp.size();
             std::cout << "Loaded length "<<idx<<std::endl;
             sizes[chr] = idx;
             idx=0;
             tmp="";
             flag=false;
-            db.close();
         }
     };
     while (std::cin)
@@ -158,32 +171,49 @@ bool seqdb::import_feed()
         if (line[0]=='>')
         {
             chr = line.substr(1);
-            auto dbp= dbpath+"/"+chr+".kch";
-            dbpaths[chr]=dbp;
             chrs.push_back(chr);
             std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
-            inner();
-            if (!db.open(dbp, _DB::OWRITER | _DB::OCREATE))
+            if (scaffold)
             {
-                std::cerr<< "open error : "<<db.error().name()<<std::endl;
-                return false;
-            } else {
-                 flag=true;
+                inner(chr+std::to_string(idx));
             }
+            else
+            {
+                dbp= dbpath+"/"+chr+".kch";
+                inner(std::to_string(idx));
+                if (flag) db.close();
+                if (!db.open(dbp, _DB::OWRITER | _DB::OCREATE))
+                {
+                    std::cerr<< "open error : "<<db.error().name()<<std::endl;
+                    return false;
+                }
+                dbpaths[chr]=dbp;
+            }
+            flag=true;
             continue;
         }
         tmp += line;
         if (tmp.size()>chunksz)
         {
-            if (!db.set(std::to_string(idx), tmp.substr(0, chunksz))){
-                throw( "Error adding a value to db "+ chr);
-            };
+            if (scaffold)
+            {
+                if (!db.set(chr+std::to_string(idx), tmp.substr(0, chunksz))){
+                    throw( "Error adding a value to db "+ chr);
+                };
+            } else {
+                if (!db.set(std::to_string(idx), tmp.substr(0, chunksz))){
+                    throw( "Error adding a value to db "+ chr);
+                };
+            }
             idx+=chunksz;
             tmp = tmp.substr(chunksz);
         }
 
     }
-    inner();
+    if (scaffold)
+        inner(chr+std::to_string(idx));
+    else
+        inner(std::to_string(idx));
     return true;
 
 };
@@ -210,12 +240,17 @@ std::string seqdb::get(const size_t& l, const size_t& r)
     auto idx = get_index(l); //integer division on chunksz
     auto idx0 = idx;
     auto db = dbs[chr][0];
-    std::string val(""), tmp;
+    std::string val(""), tmp, key("");
     do
     {
-        if (!db->get(std::to_string(idx),&tmp))
+        if (scaffold)
+            key = chr+std::to_string(idx);
+        else
+            key = std::to_string(idx);
+        if (!db->get(key,&tmp))
         {
             std::cerr << "Get Error : " << db->error().name() \
+
                 << " On : "<< chr << std::to_string(idx) << std::endl;
             return "";
         }
@@ -244,7 +279,6 @@ bool seqdb::export_db_kch(const std::string& kdbname)
     }
     db.set("seqdb "+name,serial_str);
     return true;
-
 }
 
 bool seqdb::export_db(const std::string& fp )
@@ -263,15 +297,27 @@ bool seqdb::export_db(const std::string& fp )
 
 bool seqdb::load_db_()
 {
-    for (auto it:dbpaths)
+    if (scaffold)
     {
         auto db = std::shared_ptr <_DB>(new _DB);
-        if (!db->open(it.second, _DB::OREADER))
+        if (!db->open(dbpaths.begin()->second, _DB::OREADER))
         {
             std::cerr << "open error: " << db->error().name() << std::endl;
             return false;
         }
-        dbs[it.first].push_back(db);
+        for (auto it:dbpaths)
+            dbs[it.first].push_back(db);
+    } else {
+        for (auto it:dbpaths)
+        {
+            auto db = std::shared_ptr <_DB>(new _DB);
+            if (!db->open(it.second, _DB::OREADER))
+            {
+                std::cerr << "open error: " << db->error().name() << std::endl;
+                return false;
+            }
+            dbs[it.first].push_back(db);
+        }
     }
     return true;
 };
