@@ -140,6 +140,7 @@ class mafdb : public seqdb
         bool import (const std::string& dirname);
         void import_chr();
         void import_chr(const std::string&);
+        bool import_feed() {std::cerr<<"Import_Feed Not Implemented!"<<std::endl; return false;};
         bool load_db (const std::string & dbname);
         bool load_db_kch(const std::string &, const std::string&);
         bool load_db_();

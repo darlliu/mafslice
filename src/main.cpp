@@ -1,6 +1,60 @@
 #include "mafindexer.hpp"
 #include <boost/program_options.hpp>
+
+template <class T> bool routine (
+    const boost::program_options::variables_map& vm ,
+    T& s,
+    const std::string& dbname,
+    const std::string& dbpath,
+    const std::string& gph,
+    const std::string& gpf,
+    const std::string& cfg,
+    const std::string& ref,
+    const unsigned long& cks
+    )
+{
+    bool status;
+    std::cerr << "running the program"<<std::endl;
+    if (vm.count("load")) {
+        std::cerr << "Loading a config file" << cfg <<"\n";
+        if (vm.count("use-db")){
+            status = s.load_db_kch(cfg, dbname);
+        } else {
+            status = s.load_db(cfg);
+        }
+        if (!status){
+            std::cerr << "Error loading the config file!"<<std::endl;
+            return 1;
+        }
+    } else if (vm.count("create")) {
+        std::cerr << "Creating a db!"<<std::endl;
+        if (vm.count("genome-file,f"))
+            s.import_chr(gpf);
+        else if (vm.count("cin"))
+            s.import_feed();
+        else
+            s.import(gph);
+    } else if (vm.count("assemble")) {
+        std::cerr << "Assembling a db!"<<std::endl;
+        s.assemble=true;
+        s.import(gph);
+    } else {
+        std::cerr << "No mode selected, terminating"<<std::endl;
+        return 1;
+    }
+    if (vm.count("use-db")){
+        status=s.export_db_kch(cfg);
+    }
+    else
+        status = s.export_db(cfg);
+    if (status)
+        std::cerr << "Saved config! " <<std::endl;
+    else
+        std::cerr << "Save config failed! " <<std::endl;
+    return 0;
+};
 int main (int ac, char** av){
+    bool code;
     namespace po = boost::program_options;
     po::options_description desc("MAF Slicer ver 0.01. Use cases:\n\
             mafslice.exe --load --config CONFIG.CFG [--test]\n\
@@ -9,7 +63,6 @@ int main (int ac, char** av){
             mafslice.exe --assemble --config CONFIG.CFG --genome-folder FOLDER --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]");
     std::string dbname, dbpath, gph, gpf,cfg,ref;
     unsigned long cks;
-    bool status;
     desc.add_options()
         ("help,h","list the arguments")
         ("create", "Create a new DB")
@@ -38,105 +91,32 @@ int main (int ac, char** av){
         std::cerr << desc << std::endl;
         return 0;
     }
-
     if (vm.count("msa"))
     {
         mafdb s(dbname, dbpath, ref);
-        std::cerr << "running the program"<<std::endl;
-        if (vm.count("load")) {
-            std::cerr << "Loading a config file" << cfg <<"\n";
-            if (vm.count("use-db")){
-                status= s.load_db_kch(cfg, dbname);
-            } else {
-                status =s.load_db(cfg);
-            }
-            if (!status){
-                std::cerr << "Error loading the config file!"<<std::endl;
-                return 1;
-            }
-        } else if (vm.count("create")) {
-            std::cerr << "Creating a db!"<<std::endl;
-            if (vm.count("genome-file"))
-                s.import_chr(gpf);
-            else
-                s.import(gph);
-        } else if (vm.count("assemble")) {
-            std::cerr << "Assembling a db!"<<std::endl;
-            s.assemble=true;
-            s.import(gph);
-        } else {
-            std::cerr << "No mode selected, terminating"<<std::endl;
-            return 1;
-        }
-        if (vm.count("use-db")){
-            status=s.export_db_kch(cfg);
-        }
-        else
-            status = s.export_db(cfg);
-        if (status)
-            std::cerr << "Saved config! " <<std::endl;
-        else
-            std::cerr << "Save config failed! " <<std::endl;
+        code = routine<mafdb>(vm,s,dbname, dbpath, gph, gpf,cfg,ref,cks );
         if (vm.count("test"))
         {
             s.init_tree();
             //s.get("chr1",3218024,3218037);
             s.get("chr1",4417696,4417709);
             s.get("chr1",4417696,4417719);
-
         }
     }
     else
     {
-
-        std::cerr << "running the program"<<std::endl;
         seqdb s(dbname, cks, dbpath);
         if (vm.count("scaffold"))
         {
             std::cerr << "Initializing a scaffold db"<<std::endl;
             s.scaffold=true;
         }
-        if (vm.count("load")) {
-            std::cerr << "Loading a config file" << cfg <<"\n";
-            if (vm.count("use-db")){
-                status = s.load_db_kch(cfg, dbname);
-            } else {
-                status = s.load_db(cfg);
-            }
-            if (!status){
-                std::cerr << "Error loading the config file!"<<std::endl;
-                return 1;
-            }
-        } else if (vm.count("create")) {
-            std::cerr << "Creating a db!"<<std::endl;
-            if (vm.count("genome-file,f"))
-                s.import_chr(gpf);
-            else if (vm.count("cin"))
-                s.import_feed();
-            else
-                s.import(gph);
-        } else if (vm.count("assemble")) {
-            std::cerr << "Assembling a db!"<<std::endl;
-            s.assemble=true;
-            s.import(gph);
-        } else {
-            std::cerr << "No mode selected, terminating"<<std::endl;
-            return 1;
-        }
-        if (vm.count("use-db")){
-            status=s.export_db_kch(cfg);
-        }
-        else
-            status = s.export_db(cfg);
-        if (status)
-            std::cerr << "Saved config! " <<std::endl;
-        else
-            std::cerr << "Save config failed! " <<std::endl;
+        code =routine<seqdb>(vm, s,dbname, dbpath, gph, gpf,cfg,ref,cks);
         if (vm.count("test"))
         {
             std::cout <<"testing sequence get ::"<< s.get("chr6",0,400)<<std::endl;
         }
 
     }
-    return 0 ;
+    return code;
 }
