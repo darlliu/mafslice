@@ -165,9 +165,9 @@ class mafdb : public seqdb
             auto msa = msatrees[chr];
             auto it = msa->upper_bound(inode(r+1, r+1));
             for (auto rit=it; rit!=msa->begin(); --rit)
-                if (rit->r > l)
+                if ((rit->r >= l)&&(rit-> l<=r))
                     return rit;
-            return it;
+            return --it;
         };
         auto get_intervals(const unsigned& l , const unsigned& r)
         {

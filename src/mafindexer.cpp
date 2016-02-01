@@ -428,7 +428,6 @@ bool mafdb::export_db_kch(const std::string& kdbname)
     }
     db.set("mafdb "+name,serial_str);
     return true;
-
 }
 std::string mafdb::get(const unsigned& l , const unsigned& r)
 {
@@ -563,6 +562,8 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     out.first.l=l;
     out.first.r=l+dist;
     out.first.seq =rs.second;
+    out.first.chr=chr;
+    out.first.ref=ref;
     if (dist!=rs.second.size()&&(!take_masked)){
         return out;
     }
@@ -584,6 +585,8 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         itt.l=it.l+t_lshift;
         itt.r=it.l+t_dist+t_lshift;
         itt.seq=seq2;
+        itt.ref=it.ref;
+        itt.chr=it.chr;
         out.second.push_back(itt);
         for (auto &c: it.seq)
         {

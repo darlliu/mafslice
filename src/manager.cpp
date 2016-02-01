@@ -12,11 +12,12 @@ void manager::flank(const int& lf, const int& rf,
         }
         else
         {
-            inv2.seq=get_flank(ref,inv2.l-lf, inv2.r+rf);
+            inv2.seq=get_flank(inv2.ref,inv2.chr,inv2.l-lf, inv2.r+rf);
         }
 
         inv2.l-=lf;
         inv2.r+=rf;
+        std::cerr <<" Flanked "<<inv2.l <<" "<<inv2.r <<" "<<inv2.seq<<std::endl;
     };
     inner(in.first.first,in.second.first);
     for (int i=0; i<in.second.second.size();++i)

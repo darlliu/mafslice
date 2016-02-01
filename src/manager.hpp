@@ -36,7 +36,7 @@ class computer
         };
         std::thread spawn()
         {
-             return std::thread(&computer::routine, this);
+            return std::thread(&computer::routine, this);
         };
     private:
         INTERVAL_PAIR inv;
@@ -49,8 +49,14 @@ class manager
         manager(const std::string& dbname, const std::string& dbp, const std::string& ref):
             dbname(dbname),dbp(dbp), ref(ref), maf(dbname, dbp, ref){};
         manager(): manager("test","./test/test.kch", "mm10"){};
-        void init()
+        void init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
         {
+            dbname=dbname_;
+            dbp=dbp_;
+            ref=ref_;
+            maf.name=dbname;
+            maf.dbpath=dbp;
+            maf.ref=ref;
             std::cerr << "Trying to deserialize mafdb from "<< dbname <<std::endl;
             maf.load_db_kch(dbp, dbname);
             std::cerr << "Trying to deserialize reference seqdb"<<std::endl;
@@ -58,7 +64,7 @@ class manager
             seqm[ref].load_db_kch(dbp, ref);
             return;
         };
-        std::pair<INTERVAL_PAIR, INTERVAL_PAIR> get(const int& l, const int & r)
+        std::pair<INTERVAL_PAIR, INTERVAL_PAIR> get_intervals(const int& l, const int & r)
         {
             std::pair<INTERVAL_PAIR, INTERVAL_PAIR> out;
             auto it = maf.get_interval(l,r);
@@ -66,23 +72,37 @@ class manager
             out.second = maf.filter_intervals(l, r, out.first);
             return out;
         };
-        std::string get_flank(const std::string& ref, const int& l, const int& r)
+        std::string get_flank(const std::string& rf, const std::string& chr,
+                const int& l, const int& r)
         {
-            if (seqm.count(ref)==0)
+            if (seqm.count(rf)==0)
             {
-                std::cerr <<"Adding a seqdb: "<<ref<<std::endl;
-                seqm[ref]=seqdb(ref,1e4);
-                seqm[ref].load_db_kch(dbp, ref);
+                std::cerr <<"Adding a seqdb: "<<rf<<std::endl;
+                seqm[rf]=seqdb(rf,1e4);
+                seqm[rf].load_db_kch(dbp, rf);
             }
-            return seqm[ref].get(l,r);
+            return seqm[rf].get(chr, l,r);
         };
         void flank(const int& , const int& ,
                 std::pair<INTERVAL_PAIR, INTERVAL_PAIR>&);
         void compute(INTERVAL_PAIR& in)
         {
+            std::cerr <<" Creating compute object...";
             computer c(in);
+            std::cerr <<" Spawning thread...";
             std::thread th = c.spawn();
+            std::cerr <<" Joining thread"<<std::endl;
+            th.join();
             return;
+        };
+        void get(const std::string& chr, const int & l,
+                const int& r, const int& lf, const int& rf)
+        {
+            std::cerr << "Now trying to generate "<<chr<< " "<<l <<" "<<r<<std::endl;
+            maf.set_chr(chr);
+            auto invs = get_intervals(l, r);
+            flank (lf, rf, invs);
+            compute (invs.second);
         };
 
 

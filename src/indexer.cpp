@@ -211,7 +211,11 @@ bool seqdb::import_feed()
 
     }
     if (scaffold)
+    {
         inner(chr+std::to_string(idx));
+        sizes.clear();
+        chrs.clear();
+    }
     else
         inner(std::to_string(idx));
     return true;
@@ -232,15 +236,19 @@ void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
 std::string seqdb::get(const size_t& l, const size_t& r)
 {
     //First, check the sizes and make sure that the
-    if (r<=l || r >= sizes[chr])
+    if (!scaffold && (r<=l || r >= sizes[chr]))
     {
         std::cerr << "Index for slice is incorrect"<< std::endl;
         return "";
     }
     auto idx = get_index(l); //integer division on chunksz
     auto idx0 = idx;
-    auto db = dbs[chr][0];
     std::string val(""), tmp, key("");
+    std::shared_ptr<_DB> db;
+    if (scaffold)
+        db=dbs[name][0];
+    else
+        db = dbs[chr][0];
     do
     {
         if (scaffold)
@@ -300,20 +308,19 @@ bool seqdb::load_db_()
     if (scaffold)
     {
         auto db = std::shared_ptr <_DB>(new _DB);
-        if (!db->open(dbpaths.begin()->second, _DB::OREADER))
+        if (!db->open(dbpath+"/"+name+".kch", _DB::OREADER))
         {
-            std::cerr << "open error: " << db->error().name() << std::endl;
+            std::cerr << "open error (scaffold): " << db->error().name() << std::endl;
             return false;
         }
-        for (auto it:dbpaths)
-            dbs[it.first].push_back(db);
+        dbs[name].push_back(db);
     } else {
         for (auto it:dbpaths)
         {
             auto db = std::shared_ptr <_DB>(new _DB);
             if (!db->open(it.second, _DB::OREADER))
             {
-                std::cerr << "open error: " << db->error().name() << std::endl;
+                std::cerr << "open error (increment): " << db->error().name() << std::endl;
                 return false;
             }
             dbs[it.first].push_back(db);
