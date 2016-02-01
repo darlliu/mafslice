@@ -1,0 +1,3 @@
+[submodule "MOODS"]
+	path = MOODS
+	url = https://github.com/jhkorhonen/MOODS

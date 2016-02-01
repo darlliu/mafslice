@@ -1,4 +1,11 @@
 #include "indexer.hpp"
+
+std::string print_interval(const interval& in)
+{
+    auto fm = boost::format("[%1%, %2%]: (%3%, %4%) @ %7% @ {score: %5% , strand: %6%}");
+    return (fm % in.ref % in.chr % in.l % in.r % in.score % (int)in.strand % in.seq).str();
+}
+
 bool seqdb::import (const std::string& dirname)
 {
     using namespace boost::filesystem;

@@ -492,8 +492,7 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
             out.first = iv;
         }
 #if DEBUG
-        std::cerr << "Fetched an inverval " <<iv.ref <<" , "<<iv.chr<<" , "<<iv.l<<","<<iv.r
-            << ","<<iv.seq << ","<<iv.score<<","<<iv.strand <<std::endl;
+        std::cerr << "Fetched an inverval " << print_interval(iv) <<std::endl;
 #endif
     }
     return out;
@@ -507,7 +506,7 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     int lshift = l > hits.first.l ? l-hits.first.l : 0;
     int dist = r > hits.first.r ? hits.first.r - l : r-l;
 
-    //std::cerr << "Lshift "<<lshift << " , dist "<<dist << std::endl;
+    std::cerr << "Lshift "<<lshift << " , dist "<<dist << std::endl;
     auto inner = [](char & c, std::string& out, int& cnt, int& gap, const bool& masked)
     {
         switch (c){
@@ -547,13 +546,14 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     int gap1= counter(hits.first.seq, 0, lshift).first;
     auto rs= counter(hits.first.seq, lshift+gap1, dist);
     std::string tmp;
+    int foo=lshift, bar;
     for (auto &c: hits.first.seq)
     {
-         inner (c, tmp, lshift, dist, true);
+         inner (c, tmp, foo, bar, true);
     }
     hits.first.seq=tmp;
 #if DEBUG
-    std::cerr << "For ref "<<hits.first.seq <<" gap "<< gap1 <<" lshift "<<lshift
+    std::cerr << "For bg "<<l<<", "<<r<<":"<<hits.first.seq <<" gap "<< gap1 <<" lshift "<<lshift
         << " dist "<<dist<<" gap2 "<<rs.first <<" seq "<<rs.second<<std::endl;
 #endif
     //now traverse lshift+gap for first aligned position
@@ -564,6 +564,9 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     out.first.seq =rs.second;
     out.first.chr=chr;
     out.first.ref=ref;
+#if DEBUG
+    std::cerr << "For ref: "<<print_interval(out.first) <<std::endl;;
+#endif
     if (dist!=rs.second.size()&&(!take_masked)){
         return out;
     }
@@ -590,12 +593,11 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         out.second.push_back(itt);
         for (auto &c: it.seq)
         {
-            inner(c, seq1, t_lshift, t_gap1, true);
+            inner(c, seq1, foo, bar, true);
         }
         it.seq=seq1;
 #if DEBUG
-        std::cerr<<" For matching seq "<<it.ref
-            <<" l "<<it.l << " r "<<it.r << " seq "<<it.seq<<std::endl;
+        std::cerr<<" For matching seq "<<print_interval(itt)<<std::endl;
 #endif
     }
     return out;

@@ -51,6 +51,7 @@ struct interval
         float score = 0.0;
         bool strand=true;
 };
+std::string print_interval(const interval& in);
 
 class seqdb {
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
