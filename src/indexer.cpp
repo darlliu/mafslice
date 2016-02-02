@@ -273,8 +273,10 @@ std::string seqdb::get(const size_t& l, const size_t& r)
         idx += chunksz;
     }
     while (r > idx);
-    return val.substr(l-idx0, r-l);
-
+    int ul =val.size();
+    if (ul>(r-idx0)) return val.substr(l-idx0, r-l);;
+    if (ul>(l-idx0)) return val.substr(l-idx0);
+    return "";
 };
 bool seqdb::export_db_kch(const std::string& kdbname)
 {
