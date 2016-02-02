@@ -18,9 +18,7 @@ void seqdb::import (const std::string& dirname)
             std::cerr << " Now reading " << dirname << std::endl;
         }
         else
-        {
             throw ("Path does not exist: "+dirname);
-        }
     }
     catch (const filesystem_error& ex)
     {
@@ -72,9 +70,7 @@ void seqdb::import_chr(const std::string& fname)
         std::cerr << " Now reading " << fname << std::endl;
     }
     else
-    {
         throw ("File does not exist: "+fname);
-    }
     auto fn = fp.filename().string();
     fapaths[chr]=fp.string();
     boost::replace_last (fn, ".fa","");
@@ -99,15 +95,11 @@ void seqdb::import_chr()
     auto db = dbs[chr][0];
     if (assemble){
         if (!db->open(dbp, _DB::OREADER))
-        {
             throw("open error (assemble): " + std::string(db->error().name()));
-        }
 
     } else {
         if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
-        {
             throw("open error (create): " + std::string(db->error().name()));
-        }
 
     }
     size_t idx = 0;
@@ -121,9 +113,8 @@ void seqdb::import_chr()
         tmp += line;
         if (tmp.size()>chunksz)
         {
-            if ((!assemble)&&!db->set(std::to_string(idx), tmp.substr(0, chunksz))){
+            if ((!assemble)&&!db->set(std::to_string(idx), tmp.substr(0, chunksz)))
                 throw( "Error adding a value to db "+ chr);
-            };
             idx+=chunksz;
             tmp = tmp.substr(chunksz);
         }
@@ -148,16 +139,14 @@ void seqdb::import_feed()
         db.tune_map(2LL << 30);
         db.tune_defrag(8);
         if (!db.open(dbpath+"/"+name+".kch", _DB::OWRITER | _DB::OCREATE))
-        {
             throw("open error (feedin): " + std::string(db.error().name()));
-        }
     };
     if (scaffold)
     {
         std::cerr <<"This is a scaffold db, tuning to 100k size automatically."<<std::endl;
         dbp= dbpath+"/"+name+".kch";
         tune_and_open(db,name);
-        tune_and_open(db, name+"_sizes");
+        tune_and_open(db_sz, name+"_sizes");
     }
     size_t idx = 0;
     bool flag= false;
@@ -184,9 +173,6 @@ void seqdb::import_feed()
         if (line.size()==0) continue;
         if (line[0]=='>')
         {
-            chr = line.substr(1);
-            chrs.push_back(chr);
-            std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
             if (scaffold)
             {
                 inner(chr+std::to_string(idx));
@@ -202,6 +188,9 @@ void seqdb::import_feed()
                 }
                 dbpaths[chr]=dbp;
             }
+            chr = line.substr(1);
+            chrs.push_back(chr);
+            std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
             flag=true;
             continue;
         }
@@ -210,13 +199,11 @@ void seqdb::import_feed()
         {
             if (scaffold)
             {
-                if (!db.set(chr+std::to_string(idx), tmp.substr(0, chunksz))){
+                if (!db.set(chr+std::to_string(idx), tmp.substr(0, chunksz)))
                     throw( "Error adding a value to db "+ chr);
-                };
             } else {
-                if (!db.set(std::to_string(idx), tmp.substr(0, chunksz))){
+                if (!db.set(std::to_string(idx), tmp.substr(0, chunksz)))
                     throw( "Error adding a value to db "+ chr);
-                };
             }
             idx+=chunksz;
             tmp = tmp.substr(chunksz);
@@ -298,9 +285,7 @@ void seqdb::export_db_kch(const std::string& kdbname)
 
     _DB db;
     if (!db.open(kdbname, _DB::OWRITER|_DB::OCREATE))
-    {
         throw("open error (export db kch): " + std::string(db.error().name()));
-    }
     db.set("seqdb "+name,serial_str);
 }
 
@@ -309,9 +294,7 @@ void seqdb::export_db(const std::string& fp )
     std::cerr << "Trying to serialize into "<<fp <<std::endl;
     std::ofstream ofs (fp);
     if (!ofs.is_open())
-    {
         throw("open error (export db): " + fp);
-    }
     OARCHIVE ar(ofs);
     ar << BOOST_SERIALIZATION_NVP(*this);
 };
@@ -322,25 +305,19 @@ void seqdb::load_db_()
     {
         auto db = std::shared_ptr <_DB>(new _DB);
         if (!db->open(dbpath+"/"+name+".kch", _DB::OREADER))
-        {
             throw("open error (load db scaffold): " + std::string(db->error().name()));
-        }
         dbs[name].push_back(db);
 
         auto db_sz = std::shared_ptr <_DB>(new _DB);
-        if (!db->open(dbpath+"/"+name+"_sizes.kch", _DB::OREADER))
-        {
+        if (!db_sz->open(dbpath+"/"+name+"_sizes.kch", _DB::OREADER))
             throw("open error (load db scaffold sz): " + std::string(db_sz->error().name()));
-        }
         dbs[name].push_back(db_sz);
     } else {
         for (auto it:dbpaths)
         {
             auto db = std::shared_ptr <_DB>(new _DB);
             if (!db->open(it.second, _DB::OREADER))
-            {
                 throw("open error (load db increment): " + std::string(db->error().name()));
-            }
             dbs[it.first].push_back(db);
         }
     }
@@ -351,9 +328,7 @@ void seqdb::load_db(const std::string& fp )
     std::cerr << "Trying to deserialize from "<<fp <<std::endl;
     std::ifstream ifs (fp);
     if (!ifs.is_open())
-    {
         throw("open error (load db): " + fp);
-    }
     IARCHIVE ar(ifs);
     ar >> BOOST_SERIALIZATION_NVP(*this);
     load_db_();
@@ -366,9 +341,7 @@ void seqdb::load_db_kch(const std::string& kdbname, const std::string& key )
 
     _DB db;
     if (!db.open(kdbname, _DB::OREADER))
-    {
         throw("open error (load db kch): " + std::string(db.error().name()));
-    }
     db.get("seqdb "+key,&serial_str);
 
     boost::iostreams::basic_array_source<char> device(serial_str.data(), serial_str.size());

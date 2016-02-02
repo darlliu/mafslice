@@ -32,22 +32,44 @@ std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
 {
     if (seqm.count(inv.ref)==0)
     {
-        std::cerr <<"Adding a seqdb: "<<inv.ref<<std::endl;
-        seqm[inv.ref]=seqdb(inv.ref,1e4);
-        seqm[inv.ref].load_db_kch(dbp, inv.ref);
+        try
+        {
+            std::cerr <<"Adding a seqdb: "<<inv.ref<<std::endl;
+            seqm[inv.ref]=seqdb(inv.ref,1e4);
+            seqm[inv.ref].load_db_kch(dbp, inv.ref);
+        }
+        catch(std::string err)
+        {
+            std::cerr << "Got error "<<err <<std::endl;
+            return "";
+        }
     }
-    if (!inv.strand)
+    if (inv.strand)
         return seqm[inv.ref].get(inv.chr, inv.l-lf,inv.r+rf);
     else
     {
-        std::string val;
-        seqm[inv.ref].dbs[inv.ref][1]->get(inv.chr, &val);
-        unsigned sz;
-        std::stringstream ss(val);
-        ss>>sz;
-        int start = sz+1-inv.r;
-        int stop = sz+1-inv.l;
-        return seqm[inv.ref].get(inv.chr,start-rf, stop+lf);
+        try
+        {
+            unsigned sz;
+            if (seqm[inv.ref].scaffold)
+            {
+                std::string val;
+                seqm[inv.ref].dbs[inv.ref][1]->get(inv.chr, &val);
+                std::stringstream ss(val);
+                ss>>sz;
+            } else {
+                sz = seqm[inv.ref].sizes[inv.chr];
+            }
+            std::cerr <<" ref: "<<inv.ref << " , "<<inv.chr <<" size : "<<sz<<std::endl;
+            int start = sz+1-inv.r;
+            int stop = sz+1-inv.l;
+            return seqm[inv.ref].get(inv.chr,start-rf, stop+lf);
+        }
+        catch(std::string err)
+        {
+            std::cerr << "Got error "<<err <<std::endl;
+            return "";
+        }
     }
 }
 

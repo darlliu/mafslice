@@ -14,9 +14,7 @@ void mafdb::import (const std::string& dirname)
             std::cerr << " Now reading " << dirname << std::endl;
         }
         else
-        {
             throw("Path does not exist : " + dirname);
-        }
     }
     catch (const filesystem_error& ex)
     {
@@ -71,9 +69,7 @@ void mafdb::import_chr(const std::string& fname)
         std::cerr << " Now reading " << fname << std::endl;
     }
     else
-    {
         throw ("File does not exist: "+fname);
-    }
     auto fn = fp.filename().string();
     boost::replace_last (fn, ".maf","");
     chrs.push_back(fn);
@@ -141,15 +137,11 @@ void mafdb::import_chr ()
         if (pfx>0) dbp2 = dbp+"."+std::to_string(pfx-1);
         if (assemble){
             if (!db->open(dbp2, _DB::OREADER))
-            {
                 throw ("Error opening DB: "+std::string(db->error().name()));
-            }
 
         } else {
             if (!db->open(dbp2, _DB::OWRITER | _DB::OCREATE))
-            {
                 throw ("Error opening DB: "+std::string(db->error().name()));
-            }
         }
         return dbp2;
     };
@@ -351,10 +343,8 @@ void mafdb::load_db_()
             db->tune_comparator(&CMPSZ);
 #endif
             if (!db->open(dbp, _DB::OREADER))
-            {
                 throw("open error (load db scaffold): " + std::string(db->error().name())+
                         " on "+dbp);
-            }
             dbs[chr].push_back(db);
         }
     }
@@ -365,9 +355,7 @@ void mafdb::load_db (const std::string & fp)
     std::cerr << "Trying to deserialize from "<<fp <<std::endl;
     std::ifstream ifs (fp);
     if (!ifs.is_open())
-    {
         throw("open error (load db): " + fp);
-    }
     IARCHIVE ar(ifs);
     ar >> BOOST_SERIALIZATION_NVP(*this);
     load_db_();
@@ -379,9 +367,7 @@ void mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
 
     _DB db;
     if (!db.open(kdbname, _DB::OREADER))
-    {
         throw("open error (load db kch): " + std::string(db.error().name()));
-    }
     db.get("mafdb "+key,&serial_str);
 
     boost::iostreams::basic_array_source<char> device(serial_str.data(), serial_str.size());
@@ -395,9 +381,7 @@ void mafdb::export_db(const std::string& fp )
     std::cerr << "Trying to serialize into "<<fp <<std::endl;
     std::ofstream ofs (fp);
     if (!ofs.is_open())
-    {
         throw("open error (export db): " + fp);
-    }
     OARCHIVE ar(ofs);
     ar << BOOST_SERIALIZATION_NVP(*this);
 }
@@ -413,9 +397,7 @@ void mafdb::export_db_kch(const std::string& kdbname)
 
     _DB db;
     if (!db.open(kdbname, _DB::OWRITER|_DB::OCREATE))
-    {
         throw("open error (export db kch): " + std::string(db.error().name()));
-    }
     db.set("mafdb "+name,serial_str);
 }
 std::string mafdb::get(const unsigned& l , const unsigned& r)
