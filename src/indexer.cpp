@@ -6,6 +6,28 @@ std::string print_interval(const interval& in)
     return (fm % in.ref % in.chr % in.l % in.r % in.score % (int)in.strand % in.seq).str();
 }
 
+std::string get_reverse_comp(const std::string& in)
+{
+    std::string out;
+    out.reserve(in.size());
+    for (auto &c:in)
+    {
+        switch(c){
+            case 'A': out.push_back('T');
+            case 'T': out.push_back('A');
+            case 'U': out.push_back('A');
+            case 'G': out.push_back('C');
+            case 'C': out.push_back('G');
+            case 'a': out.push_back('t');
+            case 't': out.push_back('a');
+            case 'u': out.push_back('a');
+            case 'g': out.push_back('c');
+            case 'c': out.push_back('g');
+            default: out.push_back(c);
+        }
+    }
+};
+
 void seqdb::import (const std::string& dirname)
 {
     using namespace boost::filesystem;

@@ -476,8 +476,9 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
 {
     int lshift = l > hits.first.l ? l-hits.first.l : 0;
     int dist = r > hits.first.r ? hits.first.r - l : r-l;
-
+#if DEBUG
     std::cerr << "Lshift "<<lshift << " , dist "<<dist << std::endl;
+#endif
     auto inner = [](char & c, std::string& out, int& cnt, int& gap, const bool& masked)
     {
         switch (c){
@@ -516,7 +517,7 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     };
     int gap1= counter(hits.first.seq, 0, lshift).first;
     auto rs= counter(hits.first.seq, lshift+gap1, dist);
-    std::string tmp;
+    std::string tmp("");
     int foo=lshift, bar;
     for (auto &c: hits.first.seq)
     {
@@ -542,7 +543,7 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     for (auto& it: hits.second)
     {
         int t_lshift=0, t_dist=0, t_gap1=0, t_gap2=0;
-        std::string seq1,seq2;
+        std::string seq1(""),seq2("");
         for(int i=0; i<lshift+gap1; ++i)
         {
             char c=it.seq[i];
@@ -554,9 +555,17 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
             inner(c,seq2,t_dist, t_gap2, true);
         }
         interval itt;
-        itt.l=it.l+t_lshift; itt.r=it.l+t_dist+t_lshift;
         itt.seq=seq2; itt.ref=it.ref; itt.chr=it.chr; itt.strand=it.strand; itt.score=it.score;
+        if(!itt.strand)
+        {
+            itt.l = it.r - t_lshift-t_dist;
+            itt.r = it.r - t_lshift;
+        } else {
+            itt.l=it.l+t_lshift;
+            itt.r=it.l+t_dist+t_lshift;
+        }
         out.second.push_back(itt);
+        seq1="";
         for (auto &c: it.seq)
         {
             inner(c, seq1, foo, bar, true);
