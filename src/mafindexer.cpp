@@ -2,7 +2,7 @@
 #include<sstream>
 
 
-bool mafdb::import (const std::string& dirname)
+void mafdb::import (const std::string& dirname)
 {
     using namespace boost::filesystem;
     auto fp = path (dirname);
@@ -15,14 +15,13 @@ bool mafdb::import (const std::string& dirname)
         }
         else
         {
-            std::cerr << " Path does not exist: " << dirname << std::endl;
-            return false ;
+            throw("Path does not exist : " + dirname);
         }
     }
     catch (const filesystem_error& ex)
     {
         std::cerr<< "Error opening path " << dirname <<std::endl;
-        return false;
+        throw(ex);
     }
     for (auto it = directory_iterator(fp); it!= directory_iterator(); ++it)
     {
@@ -62,7 +61,6 @@ bool mafdb::import (const std::string& dirname)
         //dbpaths2 [chr] = dbp2;
         import_chr();
     }
-    return true;
 }
 void mafdb::import_chr(const std::string& fname)
 {
@@ -74,8 +72,7 @@ void mafdb::import_chr(const std::string& fname)
     }
     else
     {
-        std::cerr << "File does not exist: " <<fname<<std::endl;
-        return;
+        throw ("File does not exist: "+fname);
     }
     auto fn = fp.filename().string();
     boost::replace_last (fn, ".maf","");
@@ -341,7 +338,7 @@ void mafdb::init_tree()
     //std::cerr << "Total elements: " <<sz_all<< std::endl;
     return;
 }
-bool mafdb::load_db_()
+void mafdb::load_db_()
 {
     for (auto chr:chrs)
     {
@@ -355,30 +352,27 @@ bool mafdb::load_db_()
 #endif
             if (!db->open(dbp, _DB::OREADER))
             {
-                std::cerr << "open error: " << db->error().name()<< \
-                    " on: "<<dbp<< std::endl;
-                return false;
+                throw("open error (load db scaffold): " + std::string(db->error().name())+
+                        " on "+dbp);
             }
             dbs[chr].push_back(db);
         }
     }
     init_tree();
 };
-bool mafdb::load_db (const std::string & fp)
+void mafdb::load_db (const std::string & fp)
 {
     std::cerr << "Trying to deserialize from "<<fp <<std::endl;
     std::ifstream ifs (fp);
     if (!ifs.is_open())
     {
-        std::cerr << "Error opening file: "<<fp <<std::endl;
-        return false;
+        throw("open error (load db): " + fp);
     }
     IARCHIVE ar(ifs);
     ar >> BOOST_SERIALIZATION_NVP(*this);
     load_db_();
-    return true;
 }
-bool mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
+void mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
 {
     std::cerr << "Trying to deserialize from "<< kdbname <<std::endl;
     std::string serial_str;
@@ -386,8 +380,7 @@ bool mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
     _DB db;
     if (!db.open(kdbname, _DB::OREADER))
     {
-        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
-        return false;
+        throw("open error (load db kch): " + std::string(db.error().name()));
     }
     db.get("mafdb "+key,&serial_str);
 
@@ -395,22 +388,20 @@ bool mafdb::load_db_kch(const std::string& kdbname, const std::string& key )
     boost::iostreams::stream<boost::iostreams::basic_array_source<char> > s(device);
     BIARCHIVE ia(s);
     ia >> BOOST_SERIALIZATION_NVP(*this);
-    return load_db_();
+    load_db_();
 };
-bool mafdb::export_db(const std::string& fp )
+void mafdb::export_db(const std::string& fp )
 {
     std::cerr << "Trying to serialize into "<<fp <<std::endl;
     std::ofstream ofs (fp);
     if (!ofs.is_open())
     {
-        std::cerr << "Error opening file! "<<std::endl;
-        return false;
+        throw("open error (export db): " + fp);
     }
     OARCHIVE ar(ofs);
     ar << BOOST_SERIALIZATION_NVP(*this);
-    return true;
 }
-bool mafdb::export_db_kch(const std::string& kdbname)
+void mafdb::export_db_kch(const std::string& kdbname)
 {
     std::cerr << "Trying to serialize into "<< kdbname <<std::endl;
     std::string serial_str;
@@ -423,11 +414,9 @@ bool mafdb::export_db_kch(const std::string& kdbname)
     _DB db;
     if (!db.open(kdbname, _DB::OWRITER|_DB::OCREATE))
     {
-        std::cerr<< "open error (serialization): " <<db.error().name() <<std::endl;;
-        return false;
+        throw("open error (export db kch): " + std::string(db.error().name()));
     }
     db.set("mafdb "+name,serial_str);
-    return true;
 }
 std::string mafdb::get(const unsigned& l , const unsigned& r)
 {
@@ -473,7 +462,7 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
         ss>>rf;
         auto bk = rf.find(".");
         if (bk==std::string::npos){
-            std::cerr<<"Error breaking ref: "<<rf <<std::endl;
+            throw("Error breaking ref: "+rf);
         } else {
             iv.ref = rf.substr(0, bk);
             iv.chr = rf.substr(bk+1);
@@ -559,11 +548,9 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     //now traverse lshift+gap for first aligned position
 
     INTERVAL_PAIR out;
-    out.first.l=l;
-    out.first.r=l+dist;
-    out.first.seq =rs.second;
-    out.first.chr=chr;
-    out.first.ref=ref;
+    out.first.l=l; out.first.r=l+dist; out.first.seq =rs.second;
+    out.first.chr=chr; out.first.ref=ref;
+    out.first.strand=hits.first.strand; out.first.score=hits.first.score;
 #if DEBUG
     std::cerr << "For ref: "<<print_interval(out.first) <<std::endl;;
 #endif
@@ -585,11 +572,8 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
             inner(c,seq2,t_dist, t_gap2, true);
         }
         interval itt;
-        itt.l=it.l+t_lshift;
-        itt.r=it.l+t_dist+t_lshift;
-        itt.seq=seq2;
-        itt.ref=it.ref;
-        itt.chr=it.chr;
+        itt.l=it.l+t_lshift; itt.r=it.l+t_dist+t_lshift;
+        itt.seq=seq2; itt.ref=it.ref; itt.chr=it.chr; itt.strand=it.strand; itt.score=it.score;
         out.second.push_back(itt);
         for (auto &c: it.seq)
         {

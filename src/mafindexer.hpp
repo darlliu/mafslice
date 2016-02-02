@@ -137,15 +137,15 @@ class mafdb : public seqdb
          *  Inherited Virtuals
          */
 
-        bool import (const std::string& dirname);
+        void import (const std::string& dirname);
         void import_chr();
         void import_chr(const std::string&);
-        bool import_feed() {std::cerr<<"Import_Feed Not Implemented!"<<std::endl; return false;};
-        bool load_db (const std::string & dbname);
-        bool load_db_kch(const std::string &, const std::string&);
-        bool load_db_();
-        bool export_db (const std::string & dbname);
-        bool export_db_kch(const std::string &);
+        void import_feed() {throw("Import_Feed Not Implemented!");};
+        void load_db (const std::string & dbname);
+        void load_db_kch(const std::string &, const std::string&);
+        void load_db_();
+        void export_db (const std::string & dbname);
+        void export_db_kch(const std::string &);
         //bool export_db (const std::string & dbname);
         INTERVAL_PAIR extract_intervals (const inode&);
         INTERVAL_PAIR filter_intervals (const unsigned&, const unsigned&,

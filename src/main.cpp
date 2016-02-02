@@ -18,13 +18,9 @@ template <class T> bool routine (
     if (vm.count("load")) {
         std::cerr << "Loading a config file" << cfg <<"\n";
         if (vm.count("use-db")){
-            status = s.load_db_kch(cfg, dbname);
+            s.load_db_kch(cfg, dbname);
         } else {
-            status = s.load_db(cfg);
-        }
-        if (!status){
-            std::cerr << "Error loading the config file!"<<std::endl;
-            return 1;
+            s.load_db(cfg);
         }
     } else if (vm.count("create")) {
         std::cerr << "Creating a db!"<<std::endl;
@@ -43,14 +39,10 @@ template <class T> bool routine (
         return 1;
     }
     if (vm.count("use-db")){
-        status=s.export_db_kch(cfg);
+        s.export_db_kch(cfg);
     }
     else
-        status = s.export_db(cfg);
-    if (status)
-        std::cerr << "Saved config! " <<std::endl;
-    else
-        std::cerr << "Save config failed! " <<std::endl;
+        s.export_db(cfg);
     return 0;
 };
 int main (int ac, char** av){

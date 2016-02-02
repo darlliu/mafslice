@@ -4,6 +4,8 @@
 #include "mafindexer.hpp"
 #include <queue>
 #include <thread>
+#include "MOODS/moods_scan.h"
+
 template <typename T> bool CMP (std::pair<unsigned, T> p, std::pair<unsigned, T> p2)
 {return p.first<p2.first;};
 
@@ -72,17 +74,7 @@ class manager
             out.second = maf.filter_intervals(l, r, out.first);
             return out;
         };
-        std::string get_flank(const std::string& rf, const std::string& chr,
-                const int& l, const int& r)
-        {
-            if (seqm.count(rf)==0)
-            {
-                std::cerr <<"Adding a seqdb: "<<rf<<std::endl;
-                seqm[rf]=seqdb(rf,1e4);
-                seqm[rf].load_db_kch(dbp, rf);
-            }
-            return seqm[rf].get(chr, l,r);
-        };
+        std::string get_flank(interval& inv, const int & lf, const int & rf);
         void flank(const int& , const int& ,
                 std::pair<INTERVAL_PAIR, INTERVAL_PAIR>&);
         void compute(INTERVAL_PAIR& in)
