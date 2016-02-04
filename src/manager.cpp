@@ -3,6 +3,60 @@
 #include "manager.hpp"
 #include <algorithm>
 #include "MOODS/moods_scan.h"
+#include "MOODS/match_types.h"
+static std::vector<std::vector<std::vector<double>>> my_matrix=
+{{{-1.92069227,  1.42528548,  1.53939197, -2.85922073, -2.85922073,
+ -2.85922073, -1.07326227, -1.92069227, -2.85922073, -2.85922073,
+ -2.85922073, -2.85922073, -2.85922073},
+ { 1.89094905, -2.80559053, -2.80559053, -2.80559053, -0.6075987 ,
+ -2.80559053, -2.80559053, -2.80559053, -2.80559053, -2.80559053,
+ -2.80559053, -2.80559053,  2.00505554},
+ {-0.6075987 , -2.80559053, -2.80559053,  2.00505554,  1.89094905,
+ -0.6075987 , -1.5103015 ,  2.11079479,  2.20931053, -2.80559053,
+ -2.80559053,  2.20931053, -2.80559053},
+ {-2.85922073, -0.5222471 , -1.07326227, -1.07326227, -1.92069227,
+ 1.53939197,  1.42528548, -2.85922073, -2.85922073,  1.74364696,
+ 1.74364696, -2.85922073, -1.07326227}}}
+;
+static std::vector<std::string> refs = {"ailMel1", "anoCar2", "bosTau7", "calJac3",
+"canFam3", "cavPor3", "choHof1", "chrPic1", "danRer7", "dasNov3", "dipOrd1", "echTel1", "equCab2",
+"eriEur1", "felCat5", "fr3", "gadMor1", "galGal4", "gasAcu1", "gorGor3", "hetGla2", "hg19", "latCha1",
+"loxAfr3", "macEug2", "melGal1", "melUnd1", "micMur1", "monDom5", "myoLuc2", "nomLeu2", "ochPri2", "oreNil2",
+"ornAna1", "oryCun2", "oryLat2", "otoGar3", "oviAri1", "panTro4", "papHam1", "petMar1", "ponAbe2", "proCap1",
+"pteVam1", "rheMac3", "rn5", "saiBol1", "sarHar1", "sorAra1", "speTri2", "susScr3", "taeGut1", "tarSyr1",
+"tetNig2", "triMan1", "tupBel1", "turTru2", "vicPac1", "xenTro3"};
+static std::vector <double> mybg= {0.29,0.21,0.21,0.29};
+static std::vector <double> myth = {4.27};
+
+void manager::init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
+{
+    dbname=dbname_;
+    dbp=dbp_;
+    ref=ref_;
+    maf.name=dbname;
+    maf.dbpath=dbp;
+    maf.ref=ref;
+    std::cerr << "Trying to deserialize mafdb from "<< dbname <<std::endl;
+    maf.load_db_kch(dbp, dbname);
+    //std::cerr << "Trying to deserialize reference seqdb"<<std::endl;
+    //seqm[ref]=seqdb(ref, 1e4);
+    //seqm[ref].load_db_kch(dbp, ref);
+    //for (auto & rf: refs)
+    //{
+        //std::cerr <<" trying to deserialize "<<rf<<std::endl;
+        //seqm[rf]=seqdb(rf, 1e4);
+        //seqm[rf].load_db_kch(dbp, rf);
+    //}
+    return;
+};
+void print_matches(std::vector<match> matches)
+{
+    for (auto &m: matches)
+        std::cerr <<"("<<m.pos<< ": "<<m.score<<"); ";
+    std::cerr<<std::endl;
+    return;
+};
+
 std::string get_reverse_comp(const std::string& in)
 {
     std::string out;
@@ -26,6 +80,24 @@ std::string get_reverse_comp(const std::string& in)
     std::reverse(out.begin(), out.end());
     return out;
 };
+void computer::score()
+{
+    std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
+    auto matches = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, myth);
+    std::cerr <<" Ref score: ";
+    print_matches(matches[0]);
+    for (auto & iv : inv.second)
+    {
+        matches = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
+        if (matches[0].size()>0)
+        {
+            std::cerr <<" Matches for "<<print_interval(iv)<<std::endl;
+            print_matches (matches[0]);
+        }
+    }
+    return;
+}
+
 void manager::flank(const int& lf, const int& rf,
         std::pair<INTERVAL_PAIR, INTERVAL_PAIR>& in)
 {
@@ -36,11 +108,7 @@ void manager::flank(const int& lf, const int& rf,
             if (inv2.strand)
                 inv2.seq=inv.seq.substr(inv2.l-inv.l-lf, inv2.r-inv2.l+rf+lf);
             else
-            {
-                //std::cerr <<"Getting negative strand "<<inv.r-inv2.r-rf <<" + "<<inv2.r-inv2.l+rf+lf<<std::endl;
-                //std::cerr << print_interval(inv) << print_interval (inv2)<<std::endl;
                 inv2.seq=inv.seq.substr(inv.r-inv2.r-rf, inv2.r-inv2.l+rf+lf);
-            }
         }
         else
         {
@@ -74,6 +142,7 @@ std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
             return "";
         }
     }
+    std::cerr <<" get flank ..";
     if (inv.strand)
         return seqm[inv.ref].get(inv.chr, inv.l-lf,inv.r+rf);
     else
@@ -103,6 +172,7 @@ std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
             return "";
         }
     }
+    std::cerr <<".. done";
 }
 
 #endif

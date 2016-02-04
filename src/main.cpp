@@ -10,6 +10,7 @@ template <class T> bool routine (
     const std::string& gpf,
     const std::string& cfg,
     const std::string& ref,
+    std::vector<std::string> dbpaths,
     const unsigned long& cks
     )
 {
@@ -24,7 +25,7 @@ template <class T> bool routine (
         }
     } else if (vm.count("create")) {
         std::cerr << "Creating a db!"<<std::endl;
-        if (vm.count("genome-file,f"))
+        if (vm.count("genome-file"))
             s.import_chr(gpf);
         else if (vm.count("cin"))
             s.import_feed();
@@ -33,6 +34,7 @@ template <class T> bool routine (
     } else if (vm.count("assemble")) {
         std::cerr << "Assembling a db!"<<std::endl;
         s.assemble=true;
+        s.tmp_dbpaths = dbpaths;
         s.import(gph);
     } else {
         std::cerr << "No mode selected, terminating"<<std::endl;
@@ -54,6 +56,7 @@ int main (int ac, char** av){
             mafslice.exe --create --config CONFIG.CFG --genome-file FILE --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]\n\
             mafslice.exe --assemble --config CONFIG.CFG --genome-folder FOLDER --dbpath FOLDER --dbname NAME [--msa --ref REF]|[--chunk SZ]");
     std::string dbname, dbpath, gph, gpf,cfg,ref;
+    std::vector<std::string> dbpaths;
     unsigned long cks;
     desc.add_options()
         ("help,h","list the arguments")
@@ -68,7 +71,8 @@ int main (int ac, char** av){
         ("use-db", "Use a KyotoCabinet DB to serialize and deserialize")
         ("cin", "Instead of loading genome file from a folder, load a stream of all genomes from stdin (fasta), chromosomes are separated via >chrX")
         ("dbname,N", po::value<std::string>(&dbname), "Name of the DB for the genomes")
-        ("dbpath,P", po::value<std::string>(&dbpath), "Path to the FOLDER for which the DB is hosted")
+        ("dbpath,p", po::value<std::string>(&dbpath), "Path to the FOLDER for which the DB is hosted")
+        ("dbpaths,P", po::value<std::vector<std::string>>(&dbpaths)->multitoken(), "Paths to the FOLDERS for which various DBs is hosted (assemble mode only)")
         ("genome-folder,F", po::value<std::string>(&gph), "Path to the FOLDER for which the genomes are stored as fasta/maf files.")
         ("genome-file,f", po::value<std::string>(&gpf), "Path to the FILE for which the genome file is stored as fasta/maf.")
         ("ref,r", po::value<std::string>(&ref)->default_value("mm10"), "Reference genome for MSA, default: mm10")
@@ -83,32 +87,44 @@ int main (int ac, char** av){
         std::cerr << desc << std::endl;
         return 0;
     }
-    if (vm.count("msa"))
+    try
     {
-        mafdb s(dbname, dbpath, ref);
-        code = routine<mafdb>(vm,s,dbname, dbpath, gph, gpf,cfg,ref,cks );
-        if (vm.count("test"))
+        if (vm.count("msa"))
         {
-            s.init_tree();
-            //s.get("chr1",3218024,3218037);
-            s.get("chr1",4417696,4417709);
-            s.get("chr1",4417696,4417719);
+            mafdb s(dbname, dbpath, ref);
+            code = routine<mafdb>(vm,s,dbname, dbpath, gph, gpf,cfg,ref,dbpaths,cks );
+            if (vm.count("test"))
+            {
+                s.init_tree();
+                //s.get("chr1",3218024,3218037);
+                s.get("chr1",4417696,4417709);
+                s.get("chr1",4417696,4417719);
+            }
+        }
+        else
+        {
+            seqdb s(dbname, cks, dbpath);
+            if (vm.count("scaffold"))
+            {
+                std::cerr << "Initializing a scaffold db"<<std::endl;
+                s.scaffold=true;
+            }
+            code =routine<seqdb>(vm, s,dbname, dbpath, gph, gpf,cfg,ref,dbpaths,cks);
+            if (vm.count("test"))
+            {
+                std::cout <<"testing sequence get ::"<< s.get("chr6",0,400)<<std::endl;
+            }
+
         }
     }
-    else
+    catch (std::string s)
     {
-        seqdb s(dbname, cks, dbpath);
-        if (vm.count("scaffold"))
-        {
-            std::cerr << "Initializing a scaffold db"<<std::endl;
-            s.scaffold=true;
-        }
-        code =routine<seqdb>(vm, s,dbname, dbpath, gph, gpf,cfg,ref,cks);
-        if (vm.count("test"))
-        {
-            std::cout <<"testing sequence get ::"<< s.get("chr6",0,400)<<std::endl;
-        }
-
+        std::cerr << s << std::endl;
+        return 1;
+    }
+    catch (...)
+    {
+        std::cerr <<"Unspecified exception caught!"<<std::endl;
     }
     return code;
 }

@@ -43,6 +43,11 @@ void mafdb::import (const std::string& dirname)
         boost::replace_last (fn, ".maf","");
         chrs.push_back(fn);
     }
+    if (assemble)
+    {
+        assemble_chrs();
+        return;
+    }
     init_db(chrs, dbs);
     for (unsigned i =0; i < fps.size(); ++i)
     {
@@ -56,10 +61,27 @@ void mafdb::import (const std::string& dirname)
         auto dbp = dbpath+"/"+chr+".MSA.kch";
 #endif
         dbpaths [chr] = dbp;
-        //dbpaths2 [chr] = dbp2;
         import_chr();
     }
 }
+void mafdb::assemble_chrs()
+{
+    for (auto &chr : chrs)
+        for (auto &dbp : tmp_dbpaths)
+        {
+            if (dbp.find(chr)!=std::string::npos)
+            {
+                 dbpaths [chr] = dbp;
+                 sizes[chr]=2<<20;
+            }
+        }
+    for (auto &chr: chrs)
+    {
+         load_index(chr);
+         sizes[chr]=msadata[chr]->size();
+    }
+    return;
+};
 void mafdb::import_chr(const std::string& fname)
 {
     using namespace boost::filesystem;
@@ -100,15 +122,16 @@ void mafdb::import_chr ()
     if (!ifs.is_open()) throw("Error Opening file!");
     ifs.seekg (0, ifs.end);
     size_t fsize = ifs.tellg();
+    size_t SZLMT = 1<<19;
     ifs.seekg (0, ifs.beg);
     std::cout<< "Opened file "<<chrfp << " On chr: "<< \
         chr <<" Size: "<<fsize<<" Est. Recs: <"<<fsize/2000<<std::endl;
     fsize/=2000;
     inodes.reserve(fsize);
-    if (fsize > 1<<20 )
+    if (fsize > SZLMT )
     {
-        std::cout<< "Size is too big, trimming into "<< (1<<20)<<std::endl;
-        fsize=1<<20;
+        std::cout<< "Size is too big, trimming into "<< SZLMT<<std::endl;
+        fsize=SZLMT;
     }
     auto tune = [&](decltype(dbv[0]) &db, short pfx=0){
         auto dbp = dbpaths[chr];
@@ -119,18 +142,18 @@ void mafdb::import_chr ()
             std::cerr<<" Tuning new bucket size (B+ Tree): "<<fsize/10 <<std::endl;
             db->tune_buckets (1LL* fsize/10);
             db->tune_map(2LL << 30);
-            db->tune_defrag(8);
+            //db->tune_defrag(8);
             std::cerr<<" Tuning comparator..."<<std::endl;
             db->tune_comparator(&CMPSZ);
         }
 #else
-        if (fsize*4>1000*1000)
+        if (fsize*4>SZLMT)
         {
             std::cerr<<" Tuning new bucket size (Hash table): "<<fsize*2 <<std::endl;
             db->tune_buckets (1LL* fsize*2);
-            db->tune_options(kyotocabinet::HashDB::TLINEAR);
+            //db->tune_options(kyotoca0binet::HashDB::TCOMPRESS);
             db->tune_map(2LL << 30);
-            db->tune_defrag(8);
+            //db->tune_defrag(8);
         }
 #endif
         auto dbp2=dbp;
@@ -149,6 +172,7 @@ void mafdb::import_chr ()
     tune(db);
     while (std::getline(ifs, line))
     {
+        foo.clear();
         if (line.size()==0 || line[0]=='#') continue;
         ss.clear();
         ss.str(line);
@@ -163,12 +187,15 @@ void mafdb::import_chr ()
                 idx++;
                 if (idx % 5000 ==0)
                 {
+                    save_index(chr, inodes);
+                    inodes.clear();
                     std::cerr << "@" ;
                     if(!assemble) db->set_bulk(data,false);
                     std::cerr << idx << "/"<<total<<" .";
                     data.clear();
-                    if (idx > 1<<20)
+                    if (idx > SZLMT)
                     {
+                        db->close();
                         dbv.push_back(std::shared_ptr<_DB>(new _DB));
                         db = dbv.back();
                         auto dbp = tune(db,dbv.size());
@@ -214,11 +241,11 @@ void mafdb::import_chr ()
 }
 void mafdb::save_index(const std::string& chr, const std::vector<inode>& v)
 {
-    std::ofstream f(dbpaths[chr]+".index", std::ofstream::out|std::ofstream::binary);
+    std::ofstream f(dbpaths[chr]+".index", std::ofstream::app|std::ofstream::binary);
     if (!f.good())
         throw ("Error opening the index file!");
-    auto sz =v.size();
-    f.write((char*) &sz, sizeof(size_t));
+    //auto sz =v.size();
+    //f.write((char*) &sz, sizeof(size_t));
     for (auto &it:v)
     {
         f.write((char*) &it.l, sizeof(unsigned));
@@ -285,8 +312,8 @@ void mafdb::load_index(const std::string& chr)
             }
             save_index(chr,*msad);
         } else {
-            f.read((char*) &sz, sizeof(size_t));
-            msad->reserve(sz);
+            //f.read((char*) &sz, sizeof(size_t));
+            msad->reserve(sizes[chr]);
             for (cnt=0; cnt<sz; ++cnt)
             {
                 f.read((char*) &l, sizeof(unsigned));
@@ -425,6 +452,7 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
     rr[1]=node.r-node.l;
     std::string key, val;
     key = std::string((char*)&rr, sizeof(rr));
+    std::cerr << "dbget ..";
     if (!db->get(key, &val))
     {
         std::cerr << "No match for "<<key <<std::endl;
@@ -434,6 +462,7 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
     std::cerr << " Fetched value "<< val << " for "
         << node.p << " , "<<node.l<<" , "<<node.r <<std::endl;
 #endif
+    std::cerr <<" ..processing.. "<<std::endl;
     std::stringstream ss (val);
     std::string rf ;
     float score;

@@ -9,5 +9,6 @@ BOOST_PYTHON_MODULE(mafslice)
 {
     class_<manager>("manager")
         .def("init", &manager::init)
+        .def("compute", &manager::compute)
         .def("get", &manager::get);
 };

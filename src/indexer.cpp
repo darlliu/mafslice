@@ -1,4 +1,38 @@
 #include "indexer.hpp"
+#include <bitset>
+char encode_char(char* in)
+{
+    std::bitset<8> bs;
+    for (int i =0; i<2; ++i)
+        switch (in[i]){
+            case 'a': {bs[i*4+1]=1; }
+            case 'A': {bs[i*4+2]=0; bs[i*4+3]=0; break;}
+            case 't': {bs[i*4+1]=1; }
+            case 'T': {bs[i*4+2]=1; bs[i*4+3]=1; break;}
+            case 'c': {bs[i*4+1]=1; }
+            case 'C': {bs[i*4+2]=1; bs[i*4+3]=0; break;}
+            case 'g': {bs[i*4+1]=1; }
+            case 'G': {bs[i*4+2]=0; bs[i*4+3]=1; break;}
+            default: bs[i*4]=1;
+        }
+    return static_cast<char> (bs.to_ulong());
+};
+std::string encode_seq(std::string in)
+{
+    std::string out("");
+    out.reserve(in.size()/2);
+    char tmp[2];
+    for (int i =0; i< (in.size()+1)/2; ++i)
+    {
+        tmp[0]=in[i*2];
+        if (i*2+1< in.size())
+            tmp[1]=in[i*2+1];
+        char c = encode_char (tmp);
+        out.push_back(c);
+    }
+    return out;
+};
+
 
 std::string print_interval(const interval& in)
 {
@@ -71,6 +105,18 @@ void seqdb::import (const std::string& dirname)
         boost::replace_last (fn, ".fasta","");
         chrs.push_back(fn);
     }
+#if USE_FSQ
+    for (unsigned i =0; i < fps.size(); ++i)
+    {
+        auto chr = chrs[i];
+        set_chr(chr);
+        auto chrp = fps[i];
+        fapaths [chr] = chrp;
+        auto dbp = dbpath+"/"+chr+".fsq";
+        dbpaths [chr] = dbp;
+        import_chr_fsq();
+    }
+#else
     init_db(chrs, dbs);
     for (unsigned i =0; i < fps.size(); ++i)
     {
@@ -82,6 +128,7 @@ void seqdb::import (const std::string& dirname)
         dbpaths [chr] = dbp;
         import_chr();
     }
+#endif
 };
 void seqdb::import_chr(const std::string& fname)
 {
@@ -102,14 +149,50 @@ void seqdb::import_chr(const std::string& fname)
     fapaths[chr]=fp.string();
 #if USE_DBT
     auto dbp = dbpath+"/"+chr+".kct";
-#else
+#elif USE_DBH
     auto dbp = dbpath+"/"+chr+".kch";
+#elif USE_FSQ
+    auto dbp = dbpath+"/"+chr+".fsq";
+    import_chr_fsq();
+    return;
 #endif
     dbpaths [chr] = dbp;
     init_db(chrs, dbs);
     import_chr();
+    return;
 }
+void seqdb::import_chr_fsq()
+{
+    auto chrfp = fapaths[chr];
+    auto dbp = dbpaths[chr];
+    std::ofstream dbf1 (dbp);
+    boost::replace_last(dbp, ".fsq", ".szi");
+    std::ofstream dbf2 (dbp);
+    std::ifstream ifs (chrfp);
 
+    if (!ifs.is_open()|| !dbf1.is_open() || !dbf2.is_open()) throw("Error Opening file import sequence!");
+    size_t idx = 0;
+    std::string tmp="",line;
+    std::cout<< "Opened file "<<chrfp << " On chr: "<< chr <<std::endl;
+    while (std::getline(ifs, line))
+    {
+        if (line.size()==0 || line[0] == '>') continue;
+        tmp += line;
+    }
+    ifs.close();
+    auto coded_seq=encode_seq(tmp);
+    auto pos = dbf1.tellp();
+    dbf1<<coded_seq;
+    if ((!assemble)&&!(dbf1.good()))
+        throw( "Error writing to a 4bit sequence "+ chr);
+    dbf1.close();
+    idx+= tmp.size();
+    dbf2<<(chr+" "+std::to_string(pos));
+    std::cout << "Loaded length "<<idx<<std::endl;
+    sizes[chr] = idx;
+    dbf2.close();
+    return;
+};
 void seqdb::import_chr()
 {
     auto chrfp = fapaths[chr];
@@ -148,7 +231,50 @@ void seqdb::import_chr()
     sizes[chr] = idx;
     return;
 };
+#if USE_FSQ
 
+void seqdb::import_feed()
+{
+    std::cerr <<"..... Now importing from stdin ....."<<std::endl;
+    std::string line, tmp(""),dbp;
+    std::ofstream dbf1, dbf2;
+    if (scaffold)
+    {
+        dbf1.open(dbp);
+        boost::replace_last(dbp, ".fsq", ".szi");
+        dbf2.open(dbp);
+    }
+    size_t idx = 0;
+    bool flag= false;
+    while (std::cin)
+    {
+        std::getline(std::cin, line);
+        if (line.size()==0) continue;
+        if (line[0]=='>')
+        {
+            if (flag)
+            {
+                auto coded_seq=encode_seq(tmp);
+                auto pos = dbf1.tellp();
+                dbf1 <<coded_seq;
+                idx+= tmp.size();
+                dbf2 << (chr+" "+std::to_string(pos));
+                std::cout << "Loaded length "<<idx<<std::endl;
+                chr = line.substr(1);
+                if (!(dbf1.good())||!dbf2.good())
+                    throw( "Error writing to a 4bit sequence "+ chr);
+                tmp="";
+            }
+            std::cerr<<"Found breaking point "<<chr <<" . Assuming this is a chromosome-like!"<<std::endl;
+            flag=true;
+        }
+        tmp += line;
+    }
+    dbf1.close();
+    dbf2.close();
+    return;
+}
+#else
 void seqdb::import_feed()
 {
     std::cerr <<"..... Now importing from stdin ....."<<std::endl;
@@ -243,6 +369,7 @@ void seqdb::import_feed()
     return;
 
 };
+#endif
 
 void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
 {
@@ -347,18 +474,19 @@ void seqdb::load_db_()
 
 void seqdb::load_db(const std::string& fp )
 {
-    std::cerr << "Trying to deserialize from "<<fp <<std::endl;
+    std::cerr << "Trying to deserialize from "<<fp <<" ... ";
     std::ifstream ifs (fp);
     if (!ifs.is_open())
         throw("open error (load db): " + fp);
     IARCHIVE ar(ifs);
     ar >> BOOST_SERIALIZATION_NVP(*this);
+    std::cerr << "Loading SeqDB ... "<<std::endl;
     load_db_();
 };
 
 void seqdb::load_db_kch(const std::string& kdbname, const std::string& key )
 {
-    std::cerr << "Trying to deserialize from "<< kdbname <<std::endl;
+    std::cerr << "Trying to deserialize from "<<kdbname <<" ... ";
     std::string serial_str;
 
     _DB db;
@@ -370,5 +498,6 @@ void seqdb::load_db_kch(const std::string& kdbname, const std::string& key )
     boost::iostreams::stream<boost::iostreams::basic_array_source<char> > s(device);
     IARCHIVE ia(s);
     ia >> BOOST_SERIALIZATION_NVP(*this);
+    std::cerr << "Loading SeqDB ... "<<std::endl;
     load_db_();
 };

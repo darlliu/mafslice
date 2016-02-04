@@ -25,11 +25,7 @@ class computer
             std::cerr << "Reference: " << inv.first.seq<<std::endl;
             return;
         };
-        void score ()
-        {
-            std::cerr << "Scoring!"<<inv.first.l << inv.first.r<<std::endl;
-            return;
-        };
+        void score ();
         void routine()
         {
             realign();
@@ -51,57 +47,65 @@ class manager
         manager(const std::string& dbname, const std::string& dbp, const std::string& ref):
             dbname(dbname),dbp(dbp), ref(ref), maf(dbname, dbp, ref){};
         manager(): manager("test","./test/test.kch", "mm10"){};
-        void init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
-        {
-            dbname=dbname_;
-            dbp=dbp_;
-            ref=ref_;
-            maf.name=dbname;
-            maf.dbpath=dbp;
-            maf.ref=ref;
-            std::cerr << "Trying to deserialize mafdb from "<< dbname <<std::endl;
-            maf.load_db_kch(dbp, dbname);
-            std::cerr << "Trying to deserialize reference seqdb"<<std::endl;
-            seqm[ref]=seqdb(ref, 1e4);
-            seqm[ref].load_db_kch(dbp, ref);
-            return;
-        };
+        void init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_);
         std::pair<INTERVAL_PAIR, INTERVAL_PAIR> get_intervals(const int& l, const int & r)
         {
             std::pair<INTERVAL_PAIR, INTERVAL_PAIR> out;
             auto it = maf.get_interval(l,r);
+            std::cerr << "Extrating ... ";
             out.first = maf.extract_intervals(*it);
+            std::cerr << "... filtering... "<<std::endl;
             out.second = maf.filter_intervals(l, r, out.first);
             return out;
         };
         std::string get_flank(interval& inv, const int & lf, const int & rf);
         void flank(const int& , const int& ,
                 std::pair<INTERVAL_PAIR, INTERVAL_PAIR>&);
-        void compute(INTERVAL_PAIR& in)
+        void compute()
         {
-            std::cerr <<" Creating compute object...";
-            computer c(in);
-            std::cerr <<" Spawning thread...";
-            std::thread th = c.spawn();
-            std::cerr <<" Joining thread"<<std::endl;
-            th.join();
+            try
+            {
+                std::cerr <<" Creating compute object...";
+                computer c(inp);
+                std::cerr <<" Spawning thread...";
+                std::thread th = c.spawn();
+                std::cerr <<" Joining thread"<<std::endl;
+                th.join();
+            }
+            catch (...)
+            {
+                std::cerr <<"Compute failed on "<<print_interval(inp.first)<<std::endl;
+            }
             return;
         };
         void get(const std::string& chr, const int & l,
                 const int& r, const int& lf, const int& rf)
         {
             std::cerr << "Now trying to generate "<<chr<< " "<<l <<" "<<r<<std::endl;
-            maf.set_chr(chr);
-            auto invs = get_intervals(l, r);
-            flank (lf, rf, invs);
-            compute (invs.second);
+            try
+            {
+                maf.set_chr(chr);
+                auto invs = get_intervals(l, r);
+                //flank (lf, rf, invs);
+                inp = invs.second;
+            }
+            catch(std::string s)
+            {
+                std::cerr << "Got error" << s << std::endl;
+                return;
+            }
+            catch (...)
+            {
+                std::cerr << "Got unspecified exception..." << std::endl;
+                return;
+            }
         };
-
 
     private:
         std::string dbname, dbp, ref;
         mafdb maf;
         SEQM seqm;
+        INTERVAL_PAIR inp;
 };
 
 #endif

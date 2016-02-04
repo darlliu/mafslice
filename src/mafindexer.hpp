@@ -138,6 +138,7 @@ class mafdb : public seqdb
          */
 
         void import (const std::string& dirname);
+        void assemble_chrs();
         void import_chr();
         void import_chr(const std::string&);
         void import_feed() {throw("Import_Feed Not Implemented!");};
@@ -167,7 +168,10 @@ class mafdb : public seqdb
             for (auto rit=it; rit!=msa->begin(); --rit)
                 if ((rit->r >= l)&&(rit-> l<=r))
                     return rit;
-            return --it;
+            --it;
+            if (it->l > r || it->r < l)
+                throw ("No suitable interval exists!");
+            return it;
         };
         auto get_intervals(const unsigned& l , const unsigned& r)
         {

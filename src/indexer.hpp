@@ -69,6 +69,7 @@ class seqdb {
         virtual void import_feed();
         //import from a fasta file and build a db
         virtual void import_chr();
+        virtual void import_chr_fsq();
         //import a chromosome file
         virtual void import_chr(const std::string&);
         std::string get3 (const std::string& chr,
@@ -135,6 +136,7 @@ class seqdb {
         SIZES sizes, postfixes;
         NAMES fapaths, dbpaths;
         bool assemble, scaffold;
+        std::vector <std::string> tmp_dbpaths;
 };
 
 #endif
