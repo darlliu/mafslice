@@ -21,6 +21,7 @@ typedef kyotocabinet::TreeDB _DB;
 typedef kyotocabinet::HashDB _DB;
 #endif
 typedef std::map<std::string, std::vector<std::shared_ptr<_DB>>> DB;
+typedef std::map<std::string, std::shared_ptr<std::ifstream>> DBFSQ;
 
 
 typedef boost::archive::binary_oarchive BOARCHIVE;
@@ -64,6 +65,12 @@ class seqdb {
         ~seqdb()
         {
             close_db(dbs);
+#if USE_FSQ
+            for (auto &it: dbs_fsq)
+            {
+                it.second->close();
+            }
+#endif
         };
         virtual void import (const std::string&);
         virtual void import_feed();
@@ -96,6 +103,7 @@ class seqdb {
         virtual void load_db(const std::string &);
         virtual void load_db_kch(const std::string &, const std::string&);
         virtual void load_db_();
+        void load_sizes(std::ifstream&);
         virtual void export_db(const std::string &);
         virtual void export_db_kch(const std::string &);
         void set_chr (const std::string& c) {chr = c;} ;
@@ -133,10 +141,11 @@ class seqdb {
         INDEXTYPE indextype;
         INDEXMAP indices;
         DB dbs;
-        SIZES sizes, postfixes;
+        SIZES sizes, shifts,postfixes;
         NAMES fapaths, dbpaths;
         bool assemble, scaffold;
         std::vector <std::string> tmp_dbpaths;
+        DBFSQ dbs_fsq, dbs_fsz;
 };
 
 #endif

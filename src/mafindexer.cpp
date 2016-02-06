@@ -46,6 +46,8 @@ void mafdb::import (const std::string& dirname)
     if (assemble)
     {
         assemble_chrs();
+        init_db(chrs,dbs);
+        load_db_();
         return;
     }
     init_db(chrs, dbs);
@@ -66,19 +68,27 @@ void mafdb::import (const std::string& dirname)
 }
 void mafdb::assemble_chrs()
 {
+    std::cerr << "Assembling chromsomes from files"<< std::endl;
     for (auto &chr : chrs)
+    {
+        postfixes[chr]=1;
         for (auto &dbp : tmp_dbpaths)
         {
-            if (dbp.find(chr)!=std::string::npos)
+            if (dbp.find(chr+".MSA.kch")!=std::string::npos)
             {
-                 dbpaths [chr] = dbp;
-                 sizes[chr]=2<<20;
+                if(dbp.find(chr+".MSA.kch.")==std::string::npos)
+                {
+                    dbpaths [chr] = dbp;
+                    std::cerr << "Adding "<<dbp <<" For " <<chr << std::endl;
+                    sizes[chr]=2<<20;
+                }
+                else if (dbp.find("index")==std::string::npos)
+                {
+                    postfixes[chr]++;
+                    std::cerr <<"Parts file found from "<<dbp <<std::endl;
+                }
             }
         }
-    for (auto &chr: chrs)
-    {
-         load_index(chr);
-         sizes[chr]=msadata[chr]->size();
     }
     return;
 };
@@ -312,9 +322,9 @@ void mafdb::load_index(const std::string& chr)
             }
             save_index(chr,*msad);
         } else {
-            //f.read((char*) &sz, sizeof(size_t));
             msad->reserve(sizes[chr]);
-            for (cnt=0; cnt<sz; ++cnt)
+            cnt = 0;
+            while (f.good())
             {
                 f.read((char*) &l, sizeof(unsigned));
                 f.read((char*) &r, sizeof(unsigned));
@@ -322,6 +332,7 @@ void mafdb::load_index(const std::string& chr)
                 msad->push_back(inode(l,l+r,p));
                 if (cnt%5000 ==0)
                     std::cerr << ".";
+                cnt++;
             }
             f.close();
         }

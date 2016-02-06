@@ -112,7 +112,7 @@ int main (int ac, char** av){
             code =routine<seqdb>(vm, s,dbname, dbpath, gph, gpf,cfg,ref,dbpaths,cks);
             if (vm.count("test"))
             {
-                std::cout <<"testing sequence get ::"<< s.get("chr6",0,400)<<std::endl;
+                std::cout <<"testing sequence get ::"<< s.get("chr6",4220400,4220800)<<std::endl;
             }
 
         }
