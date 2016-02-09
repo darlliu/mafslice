@@ -1,6 +1,6 @@
-#ifndef MANAGER_CPP
-#define MANAGER_CPP
-#include "manager.hpp"
+#ifndef MOTIFMAPDB_CPP
+#define MOTIFMAPDB_CPP
+#include "motifmapdb.hpp"
 #include <algorithm>
 #include "MOODS/moods_scan.h"
 #include "MOODS/match_types.h"
@@ -28,7 +28,7 @@ static std::vector<std::string> refs = {"ailMel1", "anoCar2", "bosTau7", "calJac
 static std::vector <double> mybg= {0.29,0.21,0.21,0.29};
 static std::vector <double> myth = {4.27};
 
-void manager::init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
+void motifmapdb::init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
 {
     dbname=dbname_;
     dbp=dbp_;
@@ -38,23 +38,24 @@ void manager::init(const std::string& dbp_, const std::string& dbname_, const st
     maf.ref=ref;
     std::cerr << "Trying to deserialize mafdb from "<< dbname <<std::endl;
     maf.load_db_kch(dbp, dbname);
-    //std::cerr << "Trying to deserialize reference seqdb"<<std::endl;
-    //seqm[ref]=seqdb(ref, 1e4);
-    //seqm[ref].load_db_kch(dbp, ref);
-    //for (auto & rf: refs)
-    //{
-        //std::cerr <<" trying to deserialize "<<rf<<std::endl;
-        //seqm[rf]=seqdb(rf, 1e4);
-        //seqm[rf].load_db_kch(dbp, rf);
-    //}
+    std::cerr << "Trying to deserialize reference seqdb"<<std::endl;
+    seqm[ref]=seqdb(ref, 1e4);
+    seqm[ref].load_db_kch(dbp, ref);
+    for (auto & rf: refs)
+    {
+        std::cerr <<" trying to deserialize "<<rf<<std::endl;
+        seqm[rf]=seqdb(rf, 1e4);
+        seqm[rf].load_db_kch(dbp, rf);
+    }
     return;
 };
-void print_matches(std::vector<match> matches)
+std::string print_matches(std::vector<match> matches)
 {
+    std::stringstream ss("[");
     for (auto &m: matches)
-        std::cerr <<"("<<m.pos<< ": "<<m.score<<"); ";
-    std::cerr<<std::endl;
-    return;
+        ss<<"{"<<m.pos<< ": "<<m.score<<"}, ";
+    ss<<"]";
+    return ss.str();
 };
 
 std::string get_reverse_comp(const std::string& in)
@@ -80,25 +81,35 @@ std::string get_reverse_comp(const std::string& in)
     std::reverse(out.begin(), out.end());
     return out;
 };
-void computer::score()
+void motifmapcompute::score()
 {
+#if DEBUG
     std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
+#endif
     auto matches = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, myth);
+#if DEBUG
     std::cerr <<" Ref score: ";
+#endif
     print_matches(matches[0]);
     for (auto & iv : inv.second)
     {
         matches = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
         if (matches[0].size()>0)
         {
+#if DEBUG
             std::cerr <<" Matches for "<<print_interval(iv)<<std::endl;
-            print_matches (matches[0]);
+#endif
+            auto ss = print_matches(matches[0]);
+#if DEBUG
+            std::cerr << ss <<std::endl;
+#endif
+            SS += "{"+iv.ref+":"+ss+"}, ";
         }
     }
     return;
 }
 
-void manager::flank(const int& lf, const int& rf,
+void motifmapdb::flank(const int& lf, const int& rf,
         std::pair<INTERVAL_PAIR, INTERVAL_PAIR>& in)
 {
     auto inner = [&](interval& inv, interval& inv2)
@@ -126,7 +137,7 @@ void manager::flank(const int& lf, const int& rf,
     return;
 }
 
-std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
+std::string motifmapdb::get_flank(interval& inv, const int & lf, const int & rf)
 {
     if (seqm.count(inv.ref)==0)
     {
@@ -142,23 +153,14 @@ std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
             return "";
         }
     }
-    std::cerr <<" get flank ..";
+    //std::cerr <<" get flank ..";
     if (inv.strand)
         return seqm[inv.ref].get(inv.chr, inv.l-lf,inv.r+rf);
     else
     {
         try
         {
-            unsigned sz;
-            if (seqm[inv.ref].scaffold)
-            {
-                std::string val;
-                seqm[inv.ref].dbs[inv.ref][1]->get(inv.chr, &val);
-                std::stringstream ss(val);
-                ss>>sz;
-            } else {
-                sz = seqm[inv.ref].sizes[inv.chr];
-            }
+            unsigned sz = seqm[inv.ref].sizes[inv.chr];
 #if DEBUG
             std::cerr <<" ref: "<<inv.ref << " , "<<inv.chr <<" size : "<<sz<<std::endl;
 #endif
@@ -172,7 +174,25 @@ std::string manager::get_flank(interval& inv, const int & lf, const int & rf)
             return "";
         }
     }
-    std::cerr <<".. done";
+    //std::cerr <<".. done";
+}
+
+std::string motifmapdb::get_seq(const std::string& ref, const std::string& chr,
+    const int l, const int r, bool strand)
+{
+    auto sq = seqm[ref];
+    std::string ss;
+    if (strand)
+        ss = sq.get(chr, l, r);
+    else
+    {
+        auto sz = sq.sizes[chr];
+        int start = sz-r;
+        int stop = sz-l;
+        ss = sq.get(chr, start, stop);
+        ss= get_reverse_comp(ss);
+    }
+    return ss;
 }
 
 #endif

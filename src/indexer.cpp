@@ -450,24 +450,22 @@ void seqdb::init_db (const std::vector<std::string>& chrs, DB& dbs)
 std::string seqdb::get(const size_t& l, const size_t& r)
 {
 #if USE_FSQ
-    std::cerr <<"Trying to get"<<std::endl;
     if (r<l)
         throw("Interval incorrect!");
     std::shared_ptr<std::ifstream> db;
-    unsigned pos=0;
+    unsigned pos=shifts[chr];
+    //std::cerr <<"Trying to get "<<scaffold <<" "<<l <<", "<<r<<", "<<pos <<", "<<sizes[chr]<<std::endl;
     if (scaffold)
         db = dbs_fsq[name];
     else
-    {
         db = dbs_fsq[chr];
-        pos = shifts[chr];
-    }
     unsigned ll, rr;
     if (l%2) ll=l-1;
     else ll=l;
     if (r%2) rr=r+1;
     else rr=r;
     unsigned rr2=rr/2, ll2=ll/2;
+    db->seekg(0, db->beg);//seek back
     db->seekg(pos+ll2,db->beg);
     auto buf = new char [rr2-ll2];
     //std::cerr <<"Reading file for get "<<ll2<<", "<<rr2<<" from "<<pos<<"total"<<rr2-ll2<<std::endl;
@@ -554,10 +552,10 @@ void seqdb::load_sizes(std::ifstream& ifs)
     {
         ss >> ch;
         ss >> pos;
-        shifts[chr]=pos;
+        shifts[ch]=pos;
         ss >> pos;
-        sizes [chr]=pos;
-        chrs.push_back(chr);
+        sizes [ch]=pos;
+        chrs.push_back(ch);
     }
     ifs.close();
     return;

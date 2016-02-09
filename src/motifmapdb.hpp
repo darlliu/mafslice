@@ -1,5 +1,5 @@
-#ifndef motifmapdb
-#define motifmapdb
+#ifndef MOTIFMAPDB
+#define MOTIFMAPDB
 #include "indexer.hpp"
 #include "mafindexer.hpp"
 #include <queue>
@@ -18,18 +18,31 @@ typedef std::map <std::string, seqdb> SEQM;
 class motifmapcompute
 {
     public:
-        motifmapcompute(const INTERVAL_PAIR& inv):
-            inv (inv){};
+        motifmapcompute(const INTERVAL_PAIR& inv, const std::string& dbp):
+            inv (inv), db(std::shared_ptr<_DB> (new _DB)), dbp(dbp),SS(""){};
         void realign()
         {
             std::cerr << "Reference: " << inv.first.seq<<std::endl;
             return;
         };
         void score ();
+        void write ()
+        {
+            if (!db->open(dbp, _DB::OWRITER | _DB::OCREATE))
+            {
+                return; //quit silently
+            }
+            db->set(inv.first.ref+","+inv.first.chr+":"
+                    +std::to_string(inv.first.l)+","+std::to_string(inv.first.r),
+                    "["+SS+"]");
+            db->close();
+            return;
+        };
         void routine()
         {
             realign();
             score();
+            write();
             return;
         };
         std::thread spawn()
@@ -38,6 +51,8 @@ class motifmapcompute
         };
     private:
         INTERVAL_PAIR inv;
+        std::string dbp, SS;
+        std::shared_ptr<_DB> db;
 
 };
 
@@ -66,7 +81,7 @@ class motifmapdb
             try
             {
                 std::cerr <<" Creating compute object...";
-                motifmapcompute c(inp);
+                motifmapcompute c(inp, "./results.kch");
                 std::cerr <<" Spawning thread...";
                 std::thread th = c.spawn();
                 std::cerr <<" Joining thread"<<std::endl;
@@ -86,7 +101,7 @@ class motifmapdb
             {
                 maf.set_chr(chr);
                 auto invs = get_intervals(l, r);
-                //flank (lf, rf, invs);
+                flank (lf, rf, invs);
                 inp = invs.second;
             }
             catch(std::string s)
@@ -101,22 +116,7 @@ class motifmapdb
             }
         };
         std::string get_seq(const std::string& ref, const std::string& chr,
-            const int l, const int r, bool strand)
-        {
-            auto sq = seqm[ref];
-            std::string ss;
-            if (strand)
-                ss = sq.get(chr, l, r);
-            else
-            {
-                auto sz = sq.sizes[chr];
-                int start = sz-r;
-                int stop = sz-l;
-                ss = sq.get(chr, start, stop);
-                ss= get_reverse_comp(ss);
-            }
-            return ss;
-        };
+            const int l, const int r, bool strand);
 
     private:
         std::string dbname, dbp, ref;
