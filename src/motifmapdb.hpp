@@ -85,8 +85,7 @@ class motifmapdb
         {
             for (auto &c:threads)
             {
-                auto th = c.spawn();
-                th.join();
+                c.routine();
             }
             std::cerr << "Writing outputs to json files"<<std::endl;
             for (auto &it:OUTPUTS)
@@ -96,6 +95,8 @@ class motifmapdb
                 ofs <<"{" <<it.second<<"}";
                 ofs.close();
             }
+            OUTPUTS.clear();
+            return;
         };
         void compute()
         {
@@ -135,7 +136,7 @@ class motifmapdb
                 maf.set_chr(chr);
                 auto invs = get_intervals(l, r);
                 flank (lf, rf, invs);
-                inp=std::move(invs.second);
+                inp=invs.second;
             }
             catch(std::string s)
             {

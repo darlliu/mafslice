@@ -51,15 +51,6 @@ void motifmapdb::init(const std::string& dbp_, const std::string& dbname_,
     }
     return;
 };
-std::string print_matches(std::vector<match> matches)
-{
-    std::stringstream ss("");
-    ss<<"{";
-    for (auto &m: matches)
-        ss<<m.pos<< ": "<<m.score<<", ";
-    ss<<"}";
-    return ss.str();
-};
 
 std::string get_reverse_comp(const std::string& in)
 {
@@ -109,22 +100,42 @@ void motifmapcompute::write()
 }
 void motifmapcompute::score()
 {
+    auto print_matches = [&] (std::vector<match>& matches, interval& inv)
+    {
+        std::stringstream ss("");
+        ss<<"{";
+        match mx;
+        mx.score = -1000;
+        for (auto &m: matches)
+            if (m.score > mx.score)
+            {
+                mx.pos = m.pos;
+                mx.score =m.score;
+            }
+        if (inv.strand)
+            ss<<mx.pos+inv.l<< ": "<<mx.score<<"}";
+        else
+            ss<<inv.r-mx.pos<< ": "<<mx.score<<"}";
+        return ss.str();
+    };
 #if DEBUG
     std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
 #endif
-    auto matches = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, myth);
+    //auto matches_ = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, std::vector<double>(){-50});
+    auto matches = MOODS::scan::naive_scan_dna(inv.first.seq, my_matrix[0], -50);
 //#if DEBUG
-    std::cerr <<" Ref score: "<< print_matches(matches[0]) <<std::endl;
-    SS+= inv.first.ref+":"+print_matches(matches[0])+",";
+    std::cerr <<" Ref score: "<< print_matches(matches, inv.first) <<std::endl;
+    SS+= inv.first.ref+":"+print_matches(matches, inv.first)+",";
     for (auto & iv : inv.second)
     {
-        matches = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
-        if (matches[0].size()>0)
+        //matches_ = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
+        matches = MOODS::scan::naive_scan_dna(iv.seq, my_matrix[0], -16);
+        if (matches.size()>0)
         {
 #if DEBUG
             std::cerr <<" Matches for "<<print_interval(iv)<<std::endl;
 #endif
-            auto ss = print_matches(matches[0]);
+            auto ss = print_matches(matches, iv);
 #if DEBUG
             std::cerr << ss <<std::endl;
 #endif
@@ -152,7 +163,9 @@ void motifmapdb::flank(const int& lf, const int& rf,
         }
         inv2.l-=lf;
         inv2.r+=rf;
+#if DEBUG
         std::cerr <<" Flanked "<<print_interval(inv2)<<std::endl;
+#endif
     };
     inner(in.first.first,in.second.first);
     for (int i=0; i<in.second.second.size();++i)
