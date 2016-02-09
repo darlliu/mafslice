@@ -26,11 +26,13 @@ static std::vector<std::string> refs = {"ailMel1", "anoCar2", "bosTau7", "calJac
 "pteVam1", "rheMac3", "rn5", "saiBol1", "sarHar1", "sorAra1", "speTri2", "susScr3", "taeGut1", "tarSyr1",
 "tetNig2", "triMan1", "tupBel1", "turTru2", "vicPac1", "xenTro3"};
 static std::vector <double> mybg= {0.29,0.21,0.21,0.29};
-static std::vector <double> myth = {4.27};
+static std::vector <double> myth = {0.0};
 
-void motifmapdb::init(const std::string& dbp_, const std::string& dbname_, const std::string& ref_)
+void motifmapdb::init(const std::string& dbp_, const std::string& dbname_,
+        const std::string& ref_ , const std::string& out)
 {
     dbname=dbname_;
+    outdir=out;
     dbp=dbp_;
     ref=ref_;
     maf.name=dbname;
@@ -51,10 +53,11 @@ void motifmapdb::init(const std::string& dbp_, const std::string& dbname_, const
 };
 std::string print_matches(std::vector<match> matches)
 {
-    std::stringstream ss("[");
+    std::stringstream ss("");
+    ss<<"{";
     for (auto &m: matches)
-        ss<<"{"<<m.pos<< ": "<<m.score<<"}, ";
-    ss<<"]";
+        ss<<m.pos<< ": "<<m.score<<", ";
+    ss<<"}";
     return ss.str();
 };
 
@@ -81,16 +84,38 @@ std::string get_reverse_comp(const std::string& in)
     std::reverse(out.begin(), out.end());
     return out;
 };
+
+void motifmapcompute::write()
+{
+    std::string ss="\"";
+    ss+=inv.first.ref+","+inv.first.chr+":"
+            +std::to_string(inv.first.l)+","+std::to_string(inv.first.r)+"\":";
+    ss+="{"+SS+"}";
+    std::lock_guard<std::mutex> guard (OUTPUTS_MTX);
+    if (OUTPUTS.count(motif)==0)
+    {
+        OUTPUTS[motif]="";
+    }
+    OUTPUTS[motif]+=ss+",\n";
+    //if (!db.good)
+    //{
+        //return; //quit silently
+    //}
+    //db.set(inv.first.ref+","+inv.first.chr+":"
+            //+std::to_string(inv.first.l)+","+std::to_string(inv.first.r),
+            //"["+SS+"]");
+    //db.close();
+    return;
+}
 void motifmapcompute::score()
 {
 #if DEBUG
     std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
 #endif
     auto matches = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, myth);
-#if DEBUG
-    std::cerr <<" Ref score: ";
-#endif
-    print_matches(matches[0]);
+//#if DEBUG
+    std::cerr <<" Ref score: "<< print_matches(matches[0]) <<std::endl;
+    SS+= inv.first.ref+":"+print_matches(matches[0])+",";
     for (auto & iv : inv.second)
     {
         matches = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
@@ -103,7 +128,7 @@ void motifmapcompute::score()
 #if DEBUG
             std::cerr << ss <<std::endl;
 #endif
-            SS += "{"+iv.ref+":"+ss+"}, ";
+            SS += iv.ref+":"+ss+", ";
         }
     }
     return;

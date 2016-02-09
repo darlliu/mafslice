@@ -33,13 +33,16 @@ LINK_DIRECTORIES(
 
 
 message("Configuring core C++ binaries")
-
+file (GLOB MOODS_SRC 
+    "${SOURCE_DIR}/MOODS/*.h"
+    "${SOURCE_DIR}/MOODS/*.cpp"
+    )
+add_library(moods SHARED ${MOODS_SRC})
+INCLUDE_DIRECTORIES ("${SOURCE_DIR}/MOODS")
 FIND_PACKAGE(Boost 1.59.0)
 FIND_PACKAGE(PythonLibs 2.7.10)
 add_library(indexer SHARED ${SOURCE_DIR}/indexer.cpp ${SOURCE_DIR}/mafindexer.cpp)
 target_link_libraries(indexer boost_filesystem boost_serialization kyotocabinet m pthread stdc++)
-add_library(manager SHARED ${SOURCE_DIR}/manager.cpp ${SOURCE_DIR}/manager.hpp)
-target_link_libraries(manager indexer)
 add_executable(mafslice.exe ${SOURCE_DIR}/main.cpp)
 target_link_libraries(mafslice.exe indexer boost_program_options)
 IF(Boost_FOUND AND PYTHONLIBS_FOUND)
@@ -50,9 +53,11 @@ IF(Boost_FOUND AND PYTHONLIBS_FOUND)
     SET(Boost_USE_MULTITHREADED ON)
     SET(Boost_USE_STATIC_RUNTIME OFF)
     FIND_PACKAGE(Boost 1.59.0 COMPONENTS python)
-    add_library(mafslice SHARED ${SOURCE_DIR}/mafslice.cpp)
-    target_link_libraries(mafslice manager ${Boost_LIBRARIES} )
-    set_target_properties(mafslice PROPERTIES PREFIX "" )
+    add_library(motifmapdb SHARED ${SOURCE_DIR}/motifmapdb.cpp ${SOURCE_DIR}/motifmapdb.hpp)
+    target_link_libraries(motifmapdb indexer moods ${Boost_LIBRARIES})
+    add_library(motifmapcore SHARED ${SOURCE_DIR}/motifmapcore.cpp)
+    target_link_libraries(motifmapcore motifmapdb ${Boost_LIBRARIES})
+    set_target_properties(motifmapcore PROPERTIES PREFIX "" )
 ELSE()
     message("Error finding boost...")
 ENDIF()
