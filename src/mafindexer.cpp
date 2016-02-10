@@ -463,7 +463,6 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
     rr[1]=node.r-node.l;
     std::string key, val;
     key = std::string((char*)&rr, sizeof(rr));
-    std::cerr << "dbget ..";
     if (!db->get(key, &val))
     {
         std::cerr << "No match for "<<key <<std::endl;
@@ -473,7 +472,6 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
     std::cerr << " Fetched value "<< val << " for "
         << node.p << " , "<<node.l<<" , "<<node.r <<std::endl;
 #endif
-    std::cerr <<" ..processing.. "<<std::endl;
     std::stringstream ss (val);
     std::string rf ;
     float score;

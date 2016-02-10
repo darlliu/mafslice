@@ -10,7 +10,7 @@
 
 std::map <std::string, std::string > OUTPUTS;
 std::mutex OUTPUTS_MTX;
-
+typedef std::vector<std::vector<double>> matrix;
 template <typename T> bool CMP (std::pair<unsigned, T> p, std::pair<unsigned, T> p2)
 {return p.first<p2.first;};
 
@@ -38,8 +38,8 @@ class motifmapcompute
 {
     public:
         motifmapcompute(const INTERVAL_PAIR& inv,
-                const std::string& motif):
-            inv (inv), SS(""), motif(motif){};
+                const std::string& motif, const matrix& mat, const double& th):
+            inv (inv), SS(""), motif(motif), mat(mat), th(th){};
         void realign(){};
         void score ();
         void write ();
@@ -57,6 +57,8 @@ class motifmapcompute
     private:
         INTERVAL_PAIR inv;
         std::string  SS, motif;
+        matrix mat;
+        double th;
 
 };
 
@@ -72,9 +74,7 @@ class motifmapdb
         {
             std::pair<INTERVAL_PAIR, INTERVAL_PAIR> out;
             auto it = maf.get_interval(l,r);
-            std::cerr << "Extrating ... ";
             out.first = maf.extract_intervals(*it);
-            std::cerr << "... filtering... "<<std::endl;
             out.second = maf.filter_intervals(l, r, out.first);
             return out;
         };
@@ -92,13 +92,14 @@ class motifmapdb
             {
                 std::cerr <<"Got "<<it.first<<std::endl;
                 std::ofstream ofs (outdir+"/"+it.first+".json");
+                boost::replace_last(it.second, ",","");
                 ofs <<"{" <<it.second<<"}";
                 ofs.close();
             }
             OUTPUTS.clear();
             return;
         };
-        void compute()
+        void compute(const std::string& motif , const matrix& mat, const double& th)
         {
             try
             {
@@ -117,7 +118,7 @@ class motifmapdb
                     threads.clear();
                 }
                 std::cerr <<" Creating compute object...";
-                threads.push_back(motifmapcompute(inp,mtf));
+                threads.push_back(motifmapcompute(inp,motif,mat, th));
                 std::cerr <<" Spawning thread...";
             }
             catch (...)
@@ -126,13 +127,12 @@ class motifmapdb
             }
             return;
         };
-        void get_inv(const std::string& motif , const std::string& chr, const int & l,
+        void get_inv( const std::string& chr, const int & l,
             const int& r, const int& lf, const int& rf)
         {
             std::cerr << "Now trying to generate "<<chr<< " "<<l <<" "<<r<<std::endl;
             try
             {
-                mtf=motif;
                 maf.set_chr(chr);
                 auto invs = get_intervals(l, r);
                 flank (lf, rf, invs);
@@ -153,7 +153,7 @@ class motifmapdb
             const int l, const int r, bool strand);
 
     private:
-        std::string dbname, dbp, ref, outdir, mtf;
+        std::string dbname, dbp, ref, outdir;
         mafdb maf;
         SEQM seqm;
         INTERVAL_PAIR inp;

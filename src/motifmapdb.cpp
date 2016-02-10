@@ -4,20 +4,7 @@
 #include <algorithm>
 #include "MOODS/moods_scan.h"
 #include "MOODS/match_types.h"
-static std::vector<std::vector<std::vector<double>>> my_matrix=
-{{{-1.92069227,  1.42528548,  1.53939197, -2.85922073, -2.85922073,
- -2.85922073, -1.07326227, -1.92069227, -2.85922073, -2.85922073,
- -2.85922073, -2.85922073, -2.85922073},
- { 1.89094905, -2.80559053, -2.80559053, -2.80559053, -0.6075987 ,
- -2.80559053, -2.80559053, -2.80559053, -2.80559053, -2.80559053,
- -2.80559053, -2.80559053,  2.00505554},
- {-0.6075987 , -2.80559053, -2.80559053,  2.00505554,  1.89094905,
- -0.6075987 , -1.5103015 ,  2.11079479,  2.20931053, -2.80559053,
- -2.80559053,  2.20931053, -2.80559053},
- {-2.85922073, -0.5222471 , -1.07326227, -1.07326227, -1.92069227,
- 1.53939197,  1.42528548, -2.85922073, -2.85922073,  1.74364696,
- 1.74364696, -2.85922073, -1.07326227}}}
-;
+
 static std::vector<std::string> refs = {"ailMel1", "anoCar2", "bosTau7", "calJac3",
 "canFam3", "cavPor3", "choHof1", "chrPic1", "danRer7", "dasNov3", "dipOrd1", "echTel1", "equCab2",
 "eriEur1", "felCat5", "fr3", "gadMor1", "galGal4", "gasAcu1", "gorGor3", "hetGla2", "hg19", "latCha1",
@@ -78,8 +65,9 @@ std::string get_reverse_comp(const std::string& in)
 
 void motifmapcompute::write()
 {
+    boost::replace_last(SS, ",","");
     std::string ss="\"";
-    ss+=inv.first.ref+","+inv.first.chr+":"
+    ss+=inv.first.chr+":"
             +std::to_string(inv.first.l)+","+std::to_string(inv.first.r)+"\":";
     ss+="{"+SS+"}";
     std::lock_guard<std::mutex> guard (OUTPUTS_MTX);
@@ -88,14 +76,6 @@ void motifmapcompute::write()
         OUTPUTS[motif]="";
     }
     OUTPUTS[motif]+=ss+",\n";
-    //if (!db.good)
-    //{
-        //return; //quit silently
-    //}
-    //db.set(inv.first.ref+","+inv.first.chr+":"
-            //+std::to_string(inv.first.l)+","+std::to_string(inv.first.r),
-            //"["+SS+"]");
-    //db.close();
     return;
 }
 void motifmapcompute::score()
@@ -103,7 +83,6 @@ void motifmapcompute::score()
     auto print_matches = [&] (std::vector<match>& matches, interval& inv)
     {
         std::stringstream ss("");
-        ss<<"{";
         match mx;
         mx.score = -1000;
         for (auto &m: matches)
@@ -112,24 +91,30 @@ void motifmapcompute::score()
                 mx.pos = m.pos;
                 mx.score =m.score;
             }
+#if DEBUG
+        ss<<"{";
         if (inv.strand)
-            ss<<mx.pos+inv.l<< ": "<<mx.score<<"}";
+            ss<<"\""<<mx.pos+inv.l<< "\" : "<<mx.score<<"}";
         else
-            ss<<inv.r-mx.pos<< ": "<<mx.score<<"}";
+            ss<<"\""<<inv.r-mx.pos<< "\" : "<<mx.score<<"}";
+#else
+        ss <<mx.score;
+#endif
         return ss.str();
     };
 #if DEBUG
     std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
 #endif
     //auto matches_ = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, std::vector<double>(){-50});
-    auto matches = MOODS::scan::naive_scan_dna(inv.first.seq, my_matrix[0], -50);
-//#if DEBUG
+    auto matches = MOODS::scan::naive_scan_dna(inv.first.seq, mat, -50);
+#if DEBUG
     std::cerr <<" Ref score: "<< print_matches(matches, inv.first) <<std::endl;
-    SS+= inv.first.ref+":"+print_matches(matches, inv.first)+",";
+#endif
+    SS+= "\"" + inv.first.ref+"\" :"+print_matches(matches, inv.first)+",";
     for (auto & iv : inv.second)
     {
         //matches_ = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
-        matches = MOODS::scan::naive_scan_dna(iv.seq, my_matrix[0], -16);
+        matches = MOODS::scan::naive_scan_dna(iv.seq, mat, th);
         if (matches.size()>0)
         {
 #if DEBUG
@@ -139,7 +124,7 @@ void motifmapcompute::score()
 #if DEBUG
             std::cerr << ss <<std::endl;
 #endif
-            SS += iv.ref+":"+ss+", ";
+            SS += "\""+iv.ref+"\" :"+ss+", ";
         }
     }
     return;
