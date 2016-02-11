@@ -468,10 +468,10 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
         std::cerr << "No match for "<<key <<std::endl;
         return out;
     }
-//#if DEBUG
+#if DEBUG
     std::cerr << " Fetched value "<< val << " for "
         << node.p << " , "<<node.l<<" , "<<node.r <<std::endl;
-//#endif
+#endif
     std::stringstream ss (val);
     std::string rf ;
     float score;
@@ -529,49 +529,15 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
             ++gap;
         return false;
     };
-    auto routine =[&](const std::string& seq, int& ls, int& dst )
+    auto routine =[&](const std::string& seq )
     {
 
         std::string tmp("");
-        int foo=ls, bar;
-        //std::vector<bool> flags;
-        //std::vector<int> entries, exits;
-        int cnt=0;
+        int foo, bar;
         for (int idx=0; idx<seq.size();++idx)
         {
-            auto flag=inner (seq[idx], tmp, cnt, bar);
-            //flags.push_back(flag);
-            //if (flags.size()==2)
-            //{
-                //if (flags[0]&&!flags[1])
-                //{
-                    //exits.push_back(cnt-1);
-                //}
-                //else if (flags[1]&&!flags[0])
-                //{
-                    //entries.push_back(cnt-1);
-                //}
-                //flags[0]=flags[1];
-                //flags.pop_back();
-            //}
+            auto flag=inner (seq[idx], tmp, foo, bar);
         }
-        //int entry=ls, exit=dst;
-        //if (dst>cnt) dst = cnt;
-        //for (auto & en: entries)
-        //{
-            //if (en<=ls)
-                //entry = en;
-            //else break; //find the last one
-        //}
-        //for (auto & ex: exits)
-        //{
-            //if (ex>ls+dst)
-            //{
-                //dst = ex - ls;
-                //break; //find the first one
-            //}
-        //}
-        //ls= entry;
         return tmp;
     };
     auto counter = [&](const std::string& seq, int l=0, int sz=0)
@@ -600,6 +566,9 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     out.first.l=lshift; out.first.r=dist; out.first.seq =rs.second;
     out.first.chr=chr; out.first.ref=ref;
     out.first.strand=hits.first.strand; out.first.score=hits.first.score;
+    hits.first.seq = routine(hits.first.seq);
+    if (lshift + dist>hits.first.seq.size())
+        dist = hits.first.seq.size()-lshift;
 #if DEBUG
     std::cerr << "For ref: "<<print_interval(out.first) <<std::endl;;
 #endif
@@ -617,7 +586,7 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
             char c=it.seq[i];
             inner(c,seq2,t_dist, t_gap2);
         }
-        it.seq=routine(it.seq,t_lshift,t_dist);
+        it.seq=routine(it.seq);
         interval itt;
         itt.seq=seq2; itt.ref=it.ref; itt.chr=it.chr; itt.strand=it.strand; itt.score=it.score;
         itt.l = t_lshift;
@@ -627,6 +596,5 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         std::cerr<<" For matching seq "<<print_interval(itt)<<std::endl;
 #endif
     }
-    hits.first.seq = routine(hits.first.seq, lshift, dist);
     return out;
 }

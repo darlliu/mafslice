@@ -51,19 +51,21 @@ std::string get_reverse_comp(const std::string& in)
         }
     }
     std::reverse(out.begin(), out.end());
-    std::cerr << "fw: "<<in<<std::endl;
-    std::cerr << "rc: "<<out<<std::endl;
     return out;
 };
 
 void motifmapcompute::write()
 {
-    boost::replace_last(SS, ",","");
-    std::string ss="\"";
+    std::string ss="\""+std::to_string(id)+"\":{";
     //ss+=inv.first.chr+":"
             //+std::to_string(inv.first.l)+","+std::to_string(inv.first.r)+"\":";
-    ss+=std::to_string(id)+"\":";
-    ss+="{"+SS+"}";
+    for (auto & it: results)
+    {
+        ss += "\""+it.first+"\":"+std::to_string(it.second)+",";
+    }
+    if (results.size()>0)
+        ss.pop_back();
+    ss.push_back('}');
     std::lock_guard<std::mutex> guard (OUTPUTS_MTX);
     if (OUTPUTS.count(motif)==0)
     {
@@ -74,57 +76,32 @@ void motifmapcompute::write()
 }
 void motifmapcompute::score(INTERVAL_PAIR& inv)
 {
-    auto print_matches = [&] (std::vector<match>& matches, interval& inv)
+
+    auto best_match= [&] (const std::vector<match>& matches, const interval& inv)
     {
-        if (matches.size()==0) return std::string("-50");
-        std::stringstream ss("");
-        match mx;
-        mx.score = matches[0].score;
+        double score = matches[0].score;
+        if (matches.size()==0)
+            score = th;
         for (auto &m: matches)
-            if (m.score > mx.score)
+            if (m.score > score)
             {
-                mx.pos = m.pos;
-                mx.score =m.score;
+                score =m.score;
             }
-#if DEBUG
-        ss<<"{";
-        if (inv.strand)
-            ss<<"\""<<mx.pos+inv.l<< "\" : "<<mx.score<<"}";
-        else
-            ss<<"\""<<inv.r-mx.pos<< "\" : "<<mx.score<<"}";
-#else
-        ss <<mx.score;
-#endif
-        return ss.str();
+        if (results.count(inv.ref)==0)
+            results [inv.ref] = score;
+        else if (results[inv.ref]<score)
+            results[inv.ref]=score;
     };
-#if DEBUG
-    std::cerr << "Scoring: "<<print_interval(inv.first)<<std::endl;
-#endif
+
     //auto matches_ = MOODS::scan::scan_dna(inv.first.seq, my_matrix,mybg, std::vector<double>(){-50});
-    auto matches = MOODS::scan::naive_scan_dna(inv.first.seq, mat, -50);
-    auto matches2= MOODS::scan::naive_scan_dna(get_reverse_comp(inv.first.seq), mat, -50);
-    matches.insert(matches.end(), matches2.begin(), matches2.end());
-#if DEBUG
-    std::cerr <<" Ref score: "<< print_matches(matches, inv.first) <<std::endl;
-#endif
-    SS+= "\"" + inv.first.ref+"\" :"+print_matches(matches, inv.first)+",";
+    best_match(MOODS::scan::naive_scan_dna(inv.first.seq, mat, th), inv.first);
+    best_match(MOODS::scan::naive_scan_dna(get_reverse_comp(inv.first.seq), mat, th), inv.first);
+
     for (auto & iv : inv.second)
     {
         //matches_ = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
-        matches = MOODS::scan::naive_scan_dna(iv.seq, mat, th);
-        matches2 = MOODS::scan::naive_scan_dna(get_reverse_comp(iv.seq), mat, th);
-        matches.insert(matches.end(), matches2.begin(), matches2.end());
-        if (matches.size()>0)
-        {
-#if DEBUG
-            std::cerr <<" Matches for "<<print_interval(iv)<<std::endl;
-#endif
-            auto ss = print_matches(matches, iv);
-#if DEBUG
-            std::cerr << ss <<std::endl;
-#endif
-            SS += "\""+iv.ref+"\" :"+ss+", ";
-        }
+        best_match(MOODS::scan::naive_scan_dna(iv.seq, mat, th), iv);
+        best_match(MOODS::scan::naive_scan_dna(get_reverse_comp(iv.seq), mat, th), iv);
     }
     return;
 }
@@ -154,14 +131,15 @@ void motifmapdb::flank(const int& lf, const int& rf,
             }
             inv2.seq=get_flank(inv2, lf, rf);
         }
-//#if DEBUG
+#if DEBUG
         std::cerr <<" Flanked "<<print_interval(inv2)<<std::endl;
-//#endif
+#endif
     };
-    inner(in.first.first,in.second.first,0, 0);
+    //std::cerr << "Before flank"<<print_interval(in.second.first)<<std::endl;
+    inner(in.first.first,in.second.first,lf, rf);
     for (int i=0; i<in.second.second.size();++i)
     {
-        std::cerr << "Before flank"<<print_interval(in.second.second[i])<<std::endl;
+        //std::cerr << "Before flank"<<print_interval(in.second.second[i])<<std::endl;
         inner(in.first.second[i], in.second.second[i], lf, rf);
     }
     return;
@@ -183,7 +161,7 @@ std::string motifmapdb::get_flank(interval& inv, const int & lf, const int & rf)
             return "";
         }
     }
-    std::cerr <<" get flank .."<<inv.ref;
+    //std::cerr <<" get flank .."<<inv.ref;
     if (inv.strand)
         return seqm[inv.ref].get(inv.chr, inv.l-lf,inv.r+rf);
     else

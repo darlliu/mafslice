@@ -453,10 +453,13 @@ std::string seqdb::get(const size_t& l, const size_t& r)
     if (r<l)
         throw("Interval incorrect!");
     std::shared_ptr<std::ifstream> db;
-    unsigned pos=shifts[chr];
+    unsigned pos=0;
     //std::cerr <<"Trying to get "<<scaffold <<" "<<l <<", "<<r<<", "<<pos <<", "<<sizes[chr]<<std::endl;
     if (scaffold)
+    {
         db = dbs_fsq[name];
+        pos = shifts[chr];
+    }
     else
         db = dbs_fsq[chr];
     unsigned ll, rr;

@@ -39,20 +39,15 @@ class motifmapcompute
     public:
         motifmapcompute(const std::vector<INTERVAL_PAIR>& invs,
                 const std::string& motif, const matrix& mat, const double& th, const int& cnt):
-            invs (invs), SS(""), motif(motif), mat(mat), th(th), id(cnt){};
+            invs (invs), motif(motif), mat(mat), th(th), id(cnt){};
         void realign(){};
         void score (INTERVAL_PAIR& inv);
         void score_all ()
         {
-            SS+="[";
             for (auto &inv: invs)
             {
-                SS+="{";
                 score(inv);
-                SS+="},";
             }
-            SS.pop_back();
-            SS+="]\n";
         };
         void write ();
         void routine()
@@ -68,8 +63,9 @@ class motifmapcompute
         };
     private:
         std::vector<INTERVAL_PAIR> invs;
-        std::string  SS, motif;
+        std::string motif;
         matrix mat;
+        std::map <std::string, double> results;
         int id;
         double th;
 
