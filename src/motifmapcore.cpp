@@ -18,5 +18,6 @@ BOOST_PYTHON_MODULE(motifmapcore)
         .def("compute", &motifmapdb::compute)
         .def("compute_join", &motifmapdb::compute_join)
         .def("get_seq", &motifmapdb::get_seq)
+        .def("add_ref", &motifmapdb::add_ref)
         .def("get", &motifmapdb::get_inv);
 };

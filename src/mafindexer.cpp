@@ -468,10 +468,10 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
         std::cerr << "No match for "<<key <<std::endl;
         return out;
     }
-#if DEBUG
+//#if DEBUG
     std::cerr << " Fetched value "<< val << " for "
         << node.p << " , "<<node.l<<" , "<<node.r <<std::endl;
-#endif
+//#endif
     std::stringstream ss (val);
     std::string rf ;
     float score;
@@ -510,34 +510,69 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
 // given a subinterval,
 // find all intersecting actual intervals (no gaps) on the list of extracted intervals.
 INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
-        INTERVAL_PAIR & hits, const bool& take_masked )
+        INTERVAL_PAIR & hits)
 {
     int lshift = l > hits.first.l ? l-hits.first.l : 0;
     int dist = r > hits.first.r ? hits.first.r - l : r-l;
 #if DEBUG
     std::cerr << "Lshift "<<lshift << " , dist "<<dist << std::endl;
 #endif
-    auto inner = [](char & c, std::string& out, int& cnt, int& gap, const bool& masked)
+    auto inner = [](const char & c, std::string& out, int& cnt, int& gap)
     {
-        switch (c){
-            //consider later optimizing this using negative filtering with N/-
-            case 'A':;case 'T':;case 'C':;case 'G':
-            {
-                out.push_back(c);
-                ++cnt;
-                break;
-            }
-            case 'a':;case 'g':;case 't':;case 'c':
-            {
-                out.push_back(c);//observe the sequence anyways
-                if (masked) {
-                    ++cnt;
-                    break;
-                }
-            }
-            default:
-                ++gap;
+        if (c != '-')
+        {
+            out.push_back(c);
+            ++cnt;
+            return true;
         }
+        else
+            ++gap;
+        return false;
+    };
+    auto routine =[&](const std::string& seq, int& ls, int& dst )
+    {
+
+        std::string tmp("");
+        int foo=ls, bar;
+        //std::vector<bool> flags;
+        //std::vector<int> entries, exits;
+        int cnt=0;
+        for (int idx=0; idx<seq.size();++idx)
+        {
+            auto flag=inner (seq[idx], tmp, cnt, bar);
+            //flags.push_back(flag);
+            //if (flags.size()==2)
+            //{
+                //if (flags[0]&&!flags[1])
+                //{
+                    //exits.push_back(cnt-1);
+                //}
+                //else if (flags[1]&&!flags[0])
+                //{
+                    //entries.push_back(cnt-1);
+                //}
+                //flags[0]=flags[1];
+                //flags.pop_back();
+            //}
+        }
+        //int entry=ls, exit=dst;
+        //if (dst>cnt) dst = cnt;
+        //for (auto & en: entries)
+        //{
+            //if (en<=ls)
+                //entry = en;
+            //else break; //find the last one
+        //}
+        //for (auto & ex: exits)
+        //{
+            //if (ex>ls+dst)
+            //{
+                //dst = ex - ls;
+                //break; //find the first one
+            //}
+        //}
+        //ls= entry;
+        return tmp;
     };
     auto counter = [&](const std::string& seq, int l=0, int sz=0)
     {
@@ -548,20 +583,13 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         for (int i = l; i<seq.size() ;++i)
         {
             char c = seq[i];
-            inner (c, out, cnt, gap, take_masked);
+            inner (c, out, cnt, gap);
             if (cnt>=sz) break;
         }
         return std::pair<int, std::string>(gap,out);
     };
     int gap1= counter(hits.first.seq, 0, lshift).first;
     auto rs= counter(hits.first.seq, lshift+gap1, dist);
-    std::string tmp("");
-    int foo=lshift, bar;
-    for (auto &c: hits.first.seq)
-    {
-         inner (c, tmp, foo, bar, true);
-    }
-    hits.first.seq=tmp;
 #if DEBUG
     std::cerr << "For bg "<<l<<", "<<r<<":"<<hits.first.seq <<" gap "<< gap1 <<" lshift "<<lshift
         << " dist "<<dist<<" gap2 "<<rs.first <<" seq "<<rs.second<<std::endl;
@@ -569,15 +597,12 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
     //now traverse lshift+gap for first aligned position
 
     INTERVAL_PAIR out;
-    out.first.l=l; out.first.r=l+dist; out.first.seq =rs.second;
+    out.first.l=lshift; out.first.r=dist; out.first.seq =rs.second;
     out.first.chr=chr; out.first.ref=ref;
     out.first.strand=hits.first.strand; out.first.score=hits.first.score;
 #if DEBUG
     std::cerr << "For ref: "<<print_interval(out.first) <<std::endl;;
 #endif
-    if (dist!=rs.second.size()&&(!take_masked)){
-        return out;
-    }
     for (auto& it: hits.second)
     {
         int t_lshift=0, t_dist=0, t_gap1=0, t_gap2=0;
@@ -585,33 +610,23 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         for(int i=0; i<lshift+gap1; ++i)
         {
             char c=it.seq[i];
-            inner(c,seq1,t_lshift, t_gap1, true);
+            inner(c,seq1,t_lshift, t_gap1);
         }
         for(int i=lshift+gap1; i<lshift+gap1+dist+rs.first; ++i)
         {
             char c=it.seq[i];
-            inner(c,seq2,t_dist, t_gap2, true);
+            inner(c,seq2,t_dist, t_gap2);
         }
+        it.seq=routine(it.seq,t_lshift,t_dist);
         interval itt;
         itt.seq=seq2; itt.ref=it.ref; itt.chr=it.chr; itt.strand=it.strand; itt.score=it.score;
-        if(!itt.strand)
-        {
-            itt.l = it.r - t_lshift-t_dist;
-            itt.r = it.r - t_lshift;
-        } else {
-            itt.l=it.l+t_lshift;
-            itt.r=it.l+t_dist+t_lshift;
-        }
+        itt.l = t_lshift;
+        itt.r = t_dist;//local change
         out.second.push_back(itt);
-        seq1="";
-        for (auto &c: it.seq)
-        {
-            inner(c, seq1, foo, bar, true);
-        }
-        it.seq=seq1;
 #if DEBUG
         std::cerr<<" For matching seq "<<print_interval(itt)<<std::endl;
 #endif
     }
+    hits.first.seq = routine(hits.first.seq, lshift, dist);
     return out;
 }

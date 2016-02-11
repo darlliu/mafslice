@@ -150,7 +150,7 @@ class mafdb : public seqdb
         //bool export_db (const std::string & dbname);
         INTERVAL_PAIR extract_intervals (const inode&);
         INTERVAL_PAIR filter_intervals (const unsigned&, const unsigned&,
-                INTERVAL_PAIR &,  const bool& masked =true);
+                INTERVAL_PAIR &);
         void flank_intervals (const unsigned&, const unsigned&,
                 std::vector<interval> &, std::vector<interval> &);
 
@@ -180,21 +180,22 @@ class mafdb : public seqdb
             auto msa = msatrees[chr];
             auto it = msa->upper_bound(inode(r+1, r+1));
             auto rit = it;
+            --rit;// move to the first "real" hit
             int cnt = 0;
             for (; rit!=msa->begin(); --rit){
                 if (rit->r > l)
                 {
-#if DEBUG
+//#if DEBUG
                     //if (cnt ==0)
                     std::cerr << " Found a match at : "<< rit->l << " , " << rit->r <<std::endl;
+//#endif
                     ++cnt;
-#endif
                 }
                 else break;
             }
-#if DEBUG
+//#if DEBUG
             std::cerr << " Found "<<cnt<< " matches ";
-#endif
+//#endif
             //check the last one as well as begin() may be included
             //to get content just do first++ -> second
             if (rit->r > l )
