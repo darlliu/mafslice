@@ -100,8 +100,8 @@ void motifmapcompute::score(INTERVAL_PAIR& inv)
     for (auto & iv : inv.second)
     {
         //matches_ = MOODS::scan::scan_dna(iv.seq, my_matrix,mybg, myth);
-        best_match(MOODS::scan::naive_scan_dna(iv.seq, mat, th), iv);
-        best_match(MOODS::scan::naive_scan_dna(get_reverse_comp(iv.seq), mat, th), iv);
+        best_match(MOODS::scan::naive_scan_dna(iv.second.seq, mat, th), iv.second);
+        best_match(MOODS::scan::naive_scan_dna(get_reverse_comp(iv.second.seq), mat, th), iv.second);
     }
     return;
 }
@@ -137,10 +137,10 @@ void motifmapdb::flank(const int& lf, const int& rf,
     };
     //std::cerr << "Before flank"<<print_interval(in.second.first)<<std::endl;
     inner(in.first.first,in.second.first,lf, rf);
-    for (int i=0; i<in.second.second.size();++i)
+    for (auto &it:in.first.second)
     {
         //std::cerr << "Before flank"<<print_interval(in.second.second[i])<<std::endl;
-        inner(in.first.second[i], in.second.second[i], lf, rf);
+        inner(in.first.second[it.first], in.second.second[it.first], lf, rf);
     }
     return;
 }

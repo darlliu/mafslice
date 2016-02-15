@@ -98,7 +98,7 @@ typedef avl_multiset <inode, MemberOption> AMSet;
 
 typedef std::map<std::string, std::shared_ptr<AMSet>> MSAMAP;
 typedef std::map<std::string, std::shared_ptr<std::vector<inode>>> MSADATA;
-typedef std::pair<interval, std::vector<interval>> INTERVAL_PAIR;
+typedef std::pair<interval, std::map<std::string, interval>> INTERVAL_PAIR;
 
 class mafdb : public seqdb
 {

@@ -37,23 +37,16 @@ class releaseGIL{
 class motifmapcompute
 {
     public:
-        motifmapcompute(const std::vector<INTERVAL_PAIR>& invs,
+        motifmapcompute(const INTERVAL_PAIR& invs,
                 const std::string& motif, const matrix& mat, const double& th, const int& cnt):
             invs (invs), motif(motif), mat(mat), th(th), id(cnt){};
         void realign(){};
         void score (INTERVAL_PAIR& inv);
-        void score_all ()
-        {
-            for (auto &inv: invs)
-            {
-                score(inv);
-            }
-        };
         void write ();
         void routine()
         {
             realign();
-            score_all();
+            score(invs);
             write();
             return;
         };
@@ -62,7 +55,7 @@ class motifmapcompute
             return std::thread(&motifmapcompute::routine, this);
         };
     private:
-        std::vector<INTERVAL_PAIR> invs;
+        INTERVAL_PAIR invs;
         std::string motif;
         matrix mat;
         std::map <std::string, double> results;
@@ -79,18 +72,38 @@ class motifmapdb
         motifmapdb(): motifmapdb("test","./test/test.kch", "mm10"){};
         void init(const std::string& dbp_, const std::string& dbname_,
                 const std::string& ref_, const std::string& out);
-        std::vector<std::pair<INTERVAL_PAIR, INTERVAL_PAIR>> get_intervals(const int& l, const int & r,
+        std::pair<INTERVAL_PAIR, INTERVAL_PAIR> get_intervals(const int& l, const int & r,
                 const int& lf, const int& rf)
         {
-            std::vector<std::pair<INTERVAL_PAIR, INTERVAL_PAIR>> out;
-            auto pp = maf.get_intervals(l-lf,r+rf);
+            std::pair<INTERVAL_PAIR, INTERVAL_PAIR> out;
             std::cerr << "Extracting one interval" << std::endl;
+            auto pp = maf.get_intervals(l-lf, r+rf);
+            bool flag=true;
             for (; pp.first!=pp.second; ++pp.first)
             {
-                std::pair<INTERVAL_PAIR,INTERVAL_PAIR> tmp;
-                tmp.first = maf.extract_intervals(*pp.first);
-                tmp.second = maf.filter_intervals(l-lf, r+rf, tmp.first);
-                out.push_back(tmp);
+                auto tmp = maf.extract_intervals(*pp.first);
+                auto tmp2 = maf.filter_intervals(l-lf, r+rf, tmp);
+                if (flag)
+                {
+                    out.first = tmp;
+                    out.second= tmp2;
+                    flag=false;
+                } else {
+                    combine_intervals(out.first.first, tmp.first);
+                    combine_intervals(out.second.first, tmp2.first);
+                    for (auto &it: tmp.second)
+                    {
+                         if (out.first.second.count(it.second.ref)==0)
+                            out.first.second[it.second.ref]=it.second;
+                         else combine_intervals(out.first.second[it.second.ref], it.second);
+                    }
+                    for (auto &it: tmp2.second)
+                    {
+                         if (out.second.second.count(it.second.ref)==0)
+                            out.second.second[it.second.ref]=it.second;
+                         else combine_intervals(out.second.second[it.second.ref], it.second);
+                    }
+                }
             }
             return out;
         };
@@ -135,11 +148,11 @@ class motifmapdb
                     threads.clear();
                 }
                 std::cerr <<" Creating compute object...";
-                threads.push_back(motifmapcompute(inps,motif,mat, th, cnt));
+                threads.push_back(motifmapcompute(inp,motif,mat, th, cnt));
             }
             catch (...)
             {
-                std::cerr <<"Compute failed on "<<print_interval(inps[0].first)<<std::endl;
+                std::cerr <<"Compute failed on "<<print_interval(inp.first)<<std::endl;
             }
             return;
         };
@@ -153,15 +166,10 @@ class motifmapdb
             std::cerr << "Now trying to calculate "<<chr<< " "<<l <<" "<<r<<std::endl;
             try
             {
-                inps.clear();
                 maf.set_chr(chr);
-                auto invss = get_intervals(l, r, lf, rf);
-                for (auto &invs: invss)
-                {
-                    flank (lf, rf, invs);
-                    auto inp=invs.second;
-                    inps.push_back(inp);
-                }
+                auto invs = get_intervals(l, r, lf, rf);
+                flank (lf, rf, invs);
+                inp=invs.second;
             }
             catch(std::string s)
             {
@@ -181,7 +189,7 @@ class motifmapdb
         std::string dbname, dbp, ref, outdir;
         mafdb maf;
         SEQM seqm;
-        std::vector<INTERVAL_PAIR> inps;
+        INTERVAL_PAIR inp;
         std::vector <std::string> refs;
         std::vector <motifmapcompute> threads;
 };

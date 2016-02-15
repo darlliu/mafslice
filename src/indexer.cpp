@@ -79,6 +79,20 @@ std::string print_interval(const interval& in)
     return (fm % in.ref % in.chr % in.l % in.r % in.score % (int)in.strand % in.seq).str();
 }
 
+bool combine_intervals(interval& left, interval& right)
+{
+    if (left.ref.find(right.ref)==std::string::npos)
+        return false;
+    if (left.chr.find(right.chr)==std::string::npos)
+        return false;
+    left.seq=""; //remove the sequence
+    if (left.l > right.l)
+        left.l=right.l;
+    if (left.r < right.r)
+        left.r=right.r;
+    return true;
+}
+
 std::string get_reverse_comp(const std::string& in)
 {
     std::string out;

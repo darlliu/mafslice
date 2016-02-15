@@ -31,6 +31,7 @@ void mafdb::import (const std::string& dirname)
             std::cout << "Found MAF file : " << fp << std::endl;
             fps.push_back(fp);
             fns.push_back(it->path().filename().string());
+
         }
         else
         {
@@ -454,7 +455,7 @@ std::string mafdb::get(const unsigned& l , const unsigned& r)
 }
 // get the content from index
 INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
-    std::pair<interval, std::vector<interval>> out;
+    INTERVAL_PAIR out;
     auto dbv = dbs [chr];
     if (node.p < 0 || node.p >= dbv.size()) throw("Incorrect db part info!");
     auto db = dbv[node.p];
@@ -495,8 +496,8 @@ INTERVAL_PAIR mafdb::extract_intervals (const inode& node){
         }
         iv.seq = iv.seq.substr(1);
         if (iv.ref != ref){
-             iv.tt=matching;
-             out.second.push_back(iv);
+            iv.tt=matching;
+            out.second[iv.ref]=iv;
         } else {
             out.first = iv;
         }
@@ -578,20 +579,21 @@ INTERVAL_PAIR mafdb::filter_intervals (const unsigned& l, const unsigned& r,
         std::string seq1(""),seq2("");
         for(int i=0; i<lshift+gap1; ++i)
         {
-            char c=it.seq[i];
+            char c=it.second.seq[i];
             inner(c,seq1,t_lshift, t_gap1);
         }
         for(int i=lshift+gap1; i<lshift+gap1+dist+rs.first; ++i)
         {
-            char c=it.seq[i];
+            char c=it.second.seq[i];
             inner(c,seq2,t_dist, t_gap2);
         }
-        it.seq=routine(it.seq);
+        it.second.seq=routine(it.second.seq);
         interval itt;
-        itt.seq=seq2; itt.ref=it.ref; itt.chr=it.chr; itt.strand=it.strand; itt.score=it.score;
+        itt.seq=seq2; itt.ref=it.second.ref; itt.chr=it.second.chr;
+        itt.strand=it.second.strand; itt.score=it.second.score;
         itt.l = t_lshift;
         itt.r = t_dist;//local change
-        out.second.push_back(itt);
+        out.second[itt.ref]=itt;
 #if DEBUG
         std::cerr<<" For matching seq "<<print_interval(itt)<<std::endl;
 #endif

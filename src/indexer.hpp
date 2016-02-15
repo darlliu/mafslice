@@ -54,6 +54,7 @@ struct interval
 };
 std::string print_interval(const interval& in);
 
+bool combine_intervals(interval& left, interval& right);
 class seqdb {
     friend class boost::serialization::access; //enable boost serialize and be a lazy programmer
     public:
