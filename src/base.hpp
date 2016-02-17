@@ -1,25 +1,25 @@
 #ifndef BASE
 #define BASE
 
-#include <vector>
 #include <algorithm>
-#include <cmath>
-#include <map>
-#include <kcpolydb.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <memory>
-#include <boost/filesystem.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/serialization/base_object.hpp>
-#include <boost/serialization/utility.hpp>
-#include <boost/serialization/string.hpp>
-#include <boost/serialization/map.hpp>
-#include <boost/serialization/vector.hpp>
+#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
-#include <boost/iostreams/stream.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/stream.hpp>
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/utility.hpp>
+#include <boost/serialization/vector.hpp>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <kcpolydb.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
 
 #define USE_DBT 0
 #define USE_DBH 0
