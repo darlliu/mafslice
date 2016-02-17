@@ -1,3 +1,0 @@
-
-cmake -DPATH_TO_LLVM_ROOT=/home/yul13/llvm -DPYTHON_INCLUDE_DIR=/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/python/2.7.10-gcc4.8.2/include/python2.7 -DPYTHON_LIBRARY=/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/python/2.7.10-gcc4.8.2/lib/libpython2.7.so -G 'Unix Makefiles' -DUSE_CLANG_COMPLETER=ON -DEXTERNAL_LIBCLANG_PATH=/home/yul13/llvm/lib/libclang.so -DCMAKE_BUILD_TYPE=Release -DPYTHON_EXECUTABLE=/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/python/2.7.10-gcc4.8.2/bin/python2.7  ../third_party/ycmd/cpp/
-
