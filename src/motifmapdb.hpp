@@ -159,7 +159,7 @@ public:
     std::cerr << "Getting all intervals between " << l << " , " << r
               << std::endl;
     maf.set_chr(chr);
-    auto pp = maf.get_intervals(l - lf, r + rf);
+    auto pp = maf.get_intervals(l, r);
     for (; pp.first != pp.second; ++pp.first) {
       auto tmp = maf.extract_intervals(*pp);
       std::cerr << "Ref: " << print_interval(tmp.first) << std::endl;
