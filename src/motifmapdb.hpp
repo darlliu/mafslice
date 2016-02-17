@@ -164,7 +164,7 @@ public:
       auto tmp = maf.extract_intervals(*pp.first);
       std::cerr << "Ref: " << print_interval(tmp.first) << std::endl;
       for (auto &it : tmp.second)
-        std::cerr << "Maf: " << print_interval(it) << std::endl;
+        std::cerr << "Maf: " << print_interval(it.second) << std::endl;
     }
     std::cerr << std::endl << std::endl;
   };
