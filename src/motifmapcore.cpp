@@ -9,6 +9,11 @@ using namespace boost::python;
 // unsigned&) = seqdb::get;
 BOOST_PYTHON_MODULE(motifmapcore) {
   PyEval_InitThreads();
+  class_<hit>("hit")
+      .def_readwrite("pos", &hit::first)
+      .def_readwrite("score", &hit::second);
+  class_<std::vector<hit>>("HitVec").def(
+      vector_indexing_suite<std::vector<hit>>());
   class_<std::vector<double>>("DoubleVec")
       .def(vector_indexing_suite<std::vector<double>>());
   class_<std::vector<std::vector<double>>>("DoubleMat")
@@ -21,4 +26,9 @@ BOOST_PYTHON_MODULE(motifmapcore) {
       .def("add_ref", &motifmapdb::add_ref)
       .def("get", &motifmapdb::get_flanks)
       .def("get_invs", &motifmapdb::get_invs);
+  class_<motifmapseq>("seqdb")
+      .def("load", &motifmapseq::load)
+      .def("get", &motifmapseq::get)
+      .def("moods_scan", &motifmapseq::moods_scan)
+      .def("moods_scan_naive", &motifmapseq::moods_naive_scan);
 };

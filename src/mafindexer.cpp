@@ -15,7 +15,6 @@ void mafdb::import(const std::string &dirname) {
     throw(ex);
   }
   for (auto it = directory_iterator(fp); it != directory_iterator(); ++it) {
-
     if (!is_directory(it->path())) {
       auto fp = it->path().string();
       if (fp.find(".maf") == std::string::npos)

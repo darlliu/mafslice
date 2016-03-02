@@ -1,7 +1,6 @@
 #ifndef MOTIFMAPDB_CPP
 #define MOTIFMAPDB_CPP
 #include "motifmapdb.hpp"
-#include "MOODS/match_types.h"
 #include "MOODS/moods_scan.h"
 #include <algorithm>
 
@@ -131,6 +130,32 @@ void motifmapcompute::score(INTERVAL_PAIR &inv) {
   }
   return;
 }
+std::vector<hit>
+motifmapseq::moods_scan(const std::string &seq,
+                        const std::vector<std::vector<double>> &mat,
+                        const std::vector<double> &bg, const double &thr) {
+  auto matches =
+      MOODS::scan::scan_dna(seq, mat, bg, std::vector<double>(){thr});
+  auto matches2 = MOODS::scan::scan_dna(get_reserve_comp(seq), mat, bg,
+                                        std::vector<double>(){thr});
+  matches.insert(matches.end(), matches2.begin(), matches2.end());
+  std::vector<hit> out;
+  for (auto &m : matches)
+    out.push_back(std::pair<int, double>{m.pos, m.score});
+  return out;
+};
+std::vector<hit>
+motifmapseq::moods_naive_scan(const std::string &seq,
+                              const std::vector<std::vector<double>> &mat,
+                              const double &thr) {
+  auto matches = MOODS::scan::naive_scan_dna(seq, mat, thr);
+  auto matches2 = MOODS::scan::naive_scan_dna(get_reserve_comp(seq), mat, thr);
+  matches.insert(matches.end(), matches2.begin(), matches2.end());
+  std::vector<hit> out;
+  for (auto &m : matches)
+    out.push_back(std::pair<int, double>{m.pos, m.score});
+  return out;
+};
 
 void motifmapdb::flank(const int &lf, const int &rf,
                        std::pair<INTERVAL_PAIR, INTERVAL_PAIR> &in) {

@@ -1,6 +1,6 @@
 #ifndef MOTIFMAPDB
 #define MOTIFMAPDB
-#include "MOODS/moods_scan.h"
+#include "MOODS/match_types.h"
 #include "indexer.hpp"
 #include "mafindexer.hpp"
 #include <Python.h>
@@ -24,7 +24,6 @@ typedef std::map<std::string, seqdb> SEQM;
 class releaseGIL {
 public:
   inline releaseGIL() { save_state = PyEval_SaveThread(); }
-
   inline ~releaseGIL() { PyEval_RestoreThread(save_state); }
 
 private:
@@ -53,6 +52,27 @@ private:
   std::map<std::string, double> results;
   int id;
   double th;
+};
+
+typedef std::pair<int, double> hit;
+
+class motifmapseq {
+public:
+  motifmapseq(){};
+  void load(const const std::string &dbp_, const std::string &ref_) {
+    db.ref = ref_;
+    db.load_db_kch(dbp_, ref_);
+  };
+  std::string get(const std::string &chr, const int &l, const int &r) {
+    return db.get(chr, l, r);
+  };
+  std::vector<hit> moods_scan(const std::string &seq,
+                              const std::vector<std::vector<double>> &mat,
+                              const std::vector<double> &bg, const double &thr);
+  std::vector<hit> moods_naive_scan(const std::string &seq,
+                                    const std::vector<std::vector<double>> &mat,
+                                    const double &thr);
+  seqdb db;
 };
 
 class motifmapdb {
