@@ -59,8 +59,8 @@ typedef std::pair<int, double> hit;
 class motifmapseq {
 public:
   motifmapseq(){};
-  void load(const const std::string &dbp_, const std::string &ref_) {
-    db.ref = ref_;
+  void load(const std::string &dbp_, const std::string &ref_) {
+    db.name = ref_;
     db.load_db_kch(dbp_, ref_);
   };
   std::string get(const std::string &chr, const int &l, const int &r) {
