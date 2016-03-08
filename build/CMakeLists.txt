@@ -15,8 +15,8 @@ set(KC_LIB_DIR "/baldig/biotools/libraries/kyotocabinet/lib")
 set(PYTHON_ROOT "/auto/igb-libs/linux/centos/6.x/x86_64/pkgs/python/2.7.10-gcc4.8.2")
 set(PYTHON_LIBRARY "${PYTHON_ROOT}/lib")
 set(PYTHON_INCLUDE_DIR "${PYTHON_ROOT}/include/python2.7")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../bin")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "../bin")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "/baldig/biotools/libraries/motifmapcore")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "/baldig/biotools/libraries/motifmapcore")
 
 #configure_file("${SOURCE_DIR}/base.hpp")
 

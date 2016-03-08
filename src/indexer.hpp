@@ -75,8 +75,10 @@ public:
   };
   virtual std::string get(const std::string &chr, const size_t &l,
                           const size_t &r) {
-    this->set_chr(chr);
-    return this->get(l, r);
+    if (sizes.count(chr)==0 || sizes[chr]<= r || r <= l)
+        return "";
+    set_chr(chr);
+    return get(l, r);
   };
   virtual std::string get(const size_t &, const size_t &);
   virtual std::string get(const std::string &key) { return ""; };

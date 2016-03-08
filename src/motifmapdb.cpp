@@ -138,10 +138,11 @@ motifmapseq::moods_scan(const std::string &seq,
       MOODS::scan::scan_dna(seq, std::vector<std::vector<std::vector<double>>>{mat}, bg, std::vector<double>{thr})[0];
   auto matches2 = MOODS::scan::scan_dna(get_reverse_comp(seq), std::vector<std::vector<std::vector<double>>>{mat}, bg,
                                         std::vector<double>{thr})[0];
-  matches.insert(matches.end(), matches2.begin(), matches2.end());
   std::vector<hit> out;
   for (auto &m : matches)
     out.push_back(std::pair<int, double>{m.pos, m.score});
+  for (auto &m : matches2)
+    out.push_back(std::pair<int, double>{-m.pos, m.score});
   return out;
 };
 std::vector<hit>
@@ -150,10 +151,11 @@ motifmapseq::moods_naive_scan(const std::string &seq,
                               const double &thr) {
   auto matches = MOODS::scan::naive_scan_dna(seq, mat, thr);
   auto matches2 = MOODS::scan::naive_scan_dna(get_reverse_comp(seq), mat, thr);
-  matches.insert(matches.end(), matches2.begin(), matches2.end());
   std::vector<hit> out;
   for (auto &m : matches)
     out.push_back(std::pair<int, double>{m.pos, m.score});
+  for (auto &m : matches2)
+    out.push_back(std::pair<int, double>{-m.pos, m.score});
   return out;
 };
 
