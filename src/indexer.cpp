@@ -569,11 +569,13 @@ void seqdb::load_sizes(std::ifstream &ifs) {
   ss << ifs.rdbuf();
   while (ss.good()) {
     ss >> ch;
+    if(!ss.good()) break;
     ss >> pos;
     shifts[ch] = pos;
     ss >> pos;
     sizes[ch] = pos;
     chrs.push_back(ch);
+    //std::cerr << "Loaded sizes:"<<ch <<", "<<shifts[ch]<<", "<<sizes[ch]<<std::endl;
   }
   ifs.close();
   return;
