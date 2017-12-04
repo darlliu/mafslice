@@ -66,9 +66,16 @@ public:
   std::string get(const std::string &chr, const int &l, const int &r) {
     return db.get(chr, l, r);
   };
+  auto sizes() { return db.sizes; };
   std::vector<hit> moods_scan(const std::string &seq,
                               const std::vector<std::vector<double>> &mat,
                               const std::vector<double> &bg, const double &thr);
+  std::vector<std::vector<hit>> moods_scan_multiple(const std::string &seq,
+                              const std::vector<std::vector<std::vector<double>>> &mat,
+                              const std::vector<double> &bg, const std::vector<double> &thr);
+  std::vector<std::vector<double>> moods_scan_multiple_stats(const std::string &seq,
+                        const std::vector<std::vector<std::vector<double>>> &mats,
+                        const std::vector<double> &bg, const std::vector<double> &thrs);
   std::vector<hit> moods_naive_scan(const std::string &seq,
                                     const std::vector<std::vector<double>> &mat,
                                     const double &thr);
@@ -126,7 +133,7 @@ public:
     std::cerr << "Writing outputs to json files" << std::endl;
     for (auto &it : OUTPUTS) {
       std::cerr << "Got " << it.first << std::endl;
-      std::ofstream ofs(outdir + "/" + it.first + ".json");
+      std::ofstream ofs(outdir + "/" + it.first + ".HITS.CXX.json");
       boost::replace_last(it.second, ",", "");
       ofs << "{" << it.second << "}";
       ofs.close();
@@ -160,8 +167,8 @@ public:
   void add_ref(const std::string &ref) { refs.push_back(ref); }
   void get_flanks(const std::string &chr, const int &l, const int &r,
                   const int &lf, const int &rf) {
-    std::cerr << "Now trying to calculate " << chr << " " << l << " " << r
-              << std::endl;
+    //std::cerr << "Now trying to calculate " << chr << " " << l << " " << r
+              //<< std::endl;
     try {
       maf.set_chr(chr);
       auto invs = get_intervals(l, r, lf, rf);
@@ -176,15 +183,15 @@ public:
     }
   };
   void get_invs(const std::string &chr, const int &l, const int &r) {
-    std::cerr << "Getting all intervals between " << l << " , " << r
-              << std::endl;
+    //std::cerr << "Getting all intervals between " << l << " , " << r
+              //<< std::endl;
     maf.set_chr(chr);
     auto pp = maf.get_intervals(l, r);
     for (; pp.first != pp.second; ++pp.first) {
       auto tmp = maf.extract_intervals(*pp.first);
-      std::cerr << "Ref: " << print_interval(tmp.first) << std::endl;
-      for (auto &it : tmp.second)
-        std::cerr << "Maf: " << print_interval(it.second) << std::endl;
+      //std::cerr << "Ref: " << print_interval(tmp.first) << std::endl;
+      //for (auto &it : tmp.second)
+        //std::cerr << "Maf: " << print_interval(it.second) << std::endl;
     }
     std::cerr << std::endl << std::endl;
   };

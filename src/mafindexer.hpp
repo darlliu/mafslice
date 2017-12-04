@@ -180,18 +180,18 @@ public:
     int cnt = 0;
     for (; rit != msa->begin(); --rit) {
       if (rit->r > l) {
-        //#if DEBUG
+        #if DEBUG
         // if (cnt ==0)
         std::cerr << " Found a match at : " << rit->l << " , " << rit->r
                   << std::endl;
-        //#endif
+        #endif
         ++cnt;
       } else
         break;
     }
-    //#if DEBUG
+    #if DEBUG
     std::cerr << " Found " << cnt << " matches ";
-    //#endif
+    #endif
     // check the last one as well as begin() may be included
     // to get content just do first++ -> second
     if (rit->r > l)

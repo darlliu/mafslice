@@ -99,7 +99,7 @@ int main(int ac, char **av) {
         s.init_tree();
         // s.get("chr1",3218024,3218037);
         s.get("chr1", 4417696, 4417709);
-        s.get("chr1", 4417696, 4417719);
+        s.get("chrX", 4417696, 4417719);
       }
     } else {
       seqdb s(dbname, cks, dbpath);
@@ -112,6 +112,7 @@ int main(int ac, char **av) {
       if (vm.count("test")) {
         std::cout << "testing sequence get ::"
                   << s.get("chr6", 4220400, 4220800) << std::endl;
+        std::cout << "testing sequence get ::" << s.get("chrX", 4417696, 4417719) << std::endl;
       }
     }
   } catch (std::string s) {

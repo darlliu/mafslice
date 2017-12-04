@@ -145,6 +145,68 @@ motifmapseq::moods_scan(const std::string &seq,
     out.push_back(std::pair<int, double>{-m.pos, m.score});
   return out;
 };
+
+std::vector<std::vector<hit>>
+motifmapseq::moods_scan_multiple(const std::string &seq,
+                        const std::vector<std::vector<std::vector<double>>> &mats,
+                        const std::vector<double> &bg, const std::vector<double> &thrs){
+  auto matches =
+      MOODS::scan::scan_dna(seq, mats, bg, thrs);
+  auto matches2 = MOODS::scan::scan_dna(get_reverse_comp(seq), mats, bg,
+                                        thrs);
+  std::vector<std::vector<hit>> outs;
+  outs.reserve(mats.size());
+  for (int i=0; i < mats.size(); ++i){
+      std::vector<hit> out;
+      for (auto &m : matches[i])
+        out.push_back(std::pair<int, double>{m.pos, m.score});
+      for (auto &m : matches2[i])
+        out.push_back(std::pair<int, double>{-m.pos, m.score});
+      outs.push_back(out);
+  }
+  return outs;
+};
+
+std::vector<std::vector<double>>
+motifmapseq::moods_scan_multiple_stats(const std::string &seq,
+                        const std::vector<std::vector<std::vector<double>>> &mats,
+                        const std::vector<double> &bg, const std::vector<double> &thrs){
+  auto matches =
+      MOODS::scan::scan_dna(seq, mats, bg, thrs);
+  auto matches2 = MOODS::scan::scan_dna(get_reverse_comp(seq), mats, bg,
+                                        thrs);
+  //matches.insert(matches.end(),matches2.begin(), matches2.end());
+  std::vector<std::vector<double>> outs;
+  outs.reserve(mats.size());
+  for (int i=0; i < mats.size(); ++i){
+      std::vector<double> diff(matches[i].size()+matches2[i].size());
+      if (diff.size()==0){
+        outs.push_back({0,0,0,1e8,-1e8});
+        continue;
+      }
+      double sum = 0 ;
+      for (auto m:matches[i]) sum+=m.score;
+      double sum2 = 0;
+      for (auto m:matches2[i]) sum2+=m.score;
+      double mean = (sum+sum2)/(diff.size());
+      std::transform(matches[i].begin(), matches[i].end(), diff.begin(),
+              [mean](const match& x){return x.score-mean;});
+      std::transform(matches2[i].begin(), matches2[i].end(), diff.begin()+matches[i].size(),
+              [mean](const match& x){return x.score-mean;});
+      double sq = std::inner_product(diff.begin(), diff.end(), diff.begin(),0.0);
+      double std = std::sqrt(sq/diff.size());
+      auto cmp =[](const match& left, const match& right){return (bool)(left.score<right.score);};
+      auto max1 = std::max_element(matches[i].begin(), matches[i].end(), cmp);
+      auto max2 = std::max_element(matches2[i].begin(), matches2[i].end(), cmp);
+      auto max = std::max(max1->score, max2->score);
+      auto min1 = std::min_element(matches[i].begin(), matches[i].end(), cmp);
+      auto min2 = std::min_element(matches2[i].begin(), matches2[i].end(), cmp);
+      auto min = std::min(min1->score, min2->score);
+      outs.push_back({diff.size(), mean, std, min, max});
+  }
+  return outs;
+};
+
 std::vector<hit>
 motifmapseq::moods_naive_scan(const std::string &seq,
                               const std::vector<std::vector<double>> &mat,
