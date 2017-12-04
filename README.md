@@ -1,10 +1,11 @@
 # mafslice
-multiple genome alignment database with index based access
+multiple genome alignment database with index based access (C++, python library)
+used internally to replace pygr
 
 * Index genome sequences and maf files into on disk db
-* Provides fast access to underlying sequences with alignment information given a range of index
+* Provides fast access to underlying sequences with alignment information given a range index
 * Does not provide any sequence alignment functionality
-* Python binding for the library
+* Python adapters for the library
 
 
 ## Notes on compiling (Manual)
@@ -20,11 +21,11 @@ The workflow is as follows:
 
 3. The structure is always cpp code -> .so (linking all necessary boost and other libraries) -> python adaptor (as simple as possible) -> python .so
 
-### Alternative (cmake)
+### Alternative (cmake, recommended)
 
-**NOTE**: This method links libraries slightly more messily. Don't know how to clean up yet but it still works.
+**NOTE**: This method links libraries slightly differently. Don't know how to clean up yet but it still works.
 
-0. Set up paths in cmake (refer to `build/CMakeLists.txt`) including boost path (whole build with sources), python paths (2.7.10+), kyotocabinet path, correct gcc etc
+0. Set up paths in cmake (refer to `build/CMakeLists.txt`) including boost path (whole build with sources), python paths (2.7.10+), kyotocabinet path, correct c++ compiler etc
 
 1. in `build/` do `cmake CMakeLists && make`
 
