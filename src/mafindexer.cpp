@@ -45,11 +45,7 @@ void mafdb::import(const std::string &dirname) {
     set_chr(chr);
     auto chrp = fps[i];
     fapaths[chr] = chrp;
-#if USE_DBT
-    auto dbp = dbpath + "/" + chr + ".MSA.kct";
-#else
     auto dbp = dbpath + "/" + chr + ".MSA.kch";
-#endif
     dbpaths[chr] = dbp;
     import_chr();
   }
@@ -85,11 +81,7 @@ void mafdb::import_chr(const std::string &fname) {
   chrs.push_back(fn);
   set_chr(fn);
   fapaths[chr] = fp.string();
-#if USE_DBT
-  auto dbp = dbpath + "/" + chr + ".MSA.kct";
-#else
   auto dbp = dbpath + "/" + chr + ".MSA.kch";
-#endif
   dbpaths[chr] = dbp;
   init_db(chrs, dbs);
   import_chr();
@@ -124,17 +116,6 @@ void mafdb::import_chr() {
   auto tune = [&](decltype(dbv[0]) &db, short pfx = 0) {
     auto dbp = dbpaths[chr];
     std::cerr << std::endl;
-#if USE_DBT
-    if (fsize > 65536) {
-      std::cerr << " Tuning new bucket size (B+ Tree): " << fsize / 10
-                << std::endl;
-      db->tune_buckets(1LL * fsize / 10);
-      db->tune_map(2LL << 30);
-      // db->tune_defrag(8);
-      std::cerr << " Tuning comparator..." << std::endl;
-      db->tune_comparator(&CMPSZ);
-    }
-#else
     if (fsize * 4 > SZLMT) {
       std::cerr << " Tuning new bucket size (Hash table): " << fsize * 2
                 << std::endl;
@@ -143,7 +124,6 @@ void mafdb::import_chr() {
       db->tune_map(2LL << 30);
       // db->tune_defrag(8);
     }
-#endif
     auto dbp2 = dbp;
     if (pfx > 0)
       dbp2 = dbp + "." + std::to_string(pfx - 1);
@@ -351,9 +331,6 @@ void mafdb::load_db_() {
       if (i > 0)
         dbp = dbp + "." + std::to_string(i);
       auto db = std::shared_ptr<_DB>(new _DB);
-#if USE_DBT
-      db->tune_comparator(&CMPSZ);
-#endif
       if (!db->open(dbp, _DB::OREADER))
         throw("open error (load db scaffold): " +
               std::string(db->error().name()) + " on " + dbp);

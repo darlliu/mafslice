@@ -21,13 +21,8 @@
 #include <string>
 #include <vector>
 
-#define USE_DBT 0
-#define USE_DBH 0
-#define USE_FSQ 1
 #define DEBUG 0
 
-#include <boost/archive/binary_iarchive.hpp>
-#include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 

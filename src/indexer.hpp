@@ -15,16 +15,10 @@ typedef std::vector<size_t> INDICES;
 typedef std::map<std::string, INDICES> INDEXMAP;
 typedef std::map<std::string, std::string> NAMES;
 typedef std::map<std::string, size_t> SIZES;
-#if USE_DBT
-typedef kyotocabinet::TreeDB _DB;
-#else
 typedef kyotocabinet::HashDB _DB;
-#endif
 typedef std::map<std::string, std::vector<std::shared_ptr<_DB>>> DB;
 typedef std::map<std::string, std::shared_ptr<std::ifstream>> DBFSQ;
 
-typedef boost::archive::binary_oarchive BOARCHIVE;
-typedef boost::archive::binary_iarchive BIARCHIVE;
 typedef boost::archive::text_oarchive OARCHIVE;
 typedef boost::archive::text_iarchive IARCHIVE;
 
@@ -57,11 +51,9 @@ public:
   seqdb() : seqdb("default", 1e4){};
   ~seqdb() {
     close_db(dbs);
-#if USE_FSQ
     for (auto &it : dbs_fsq) {
       it.second->close();
     }
-#endif
   };
   virtual void import(const std::string &);
   virtual void import_feed();
@@ -123,13 +115,8 @@ public:
   std::string name,
       dbpath;     // name of the db and the directory path for kyotocabinet
   size_t chunksz; // size of each chunk of sequence
-#if USE_DBT
-  DBTYPE dbtype =
-      tree; // type of db to be intialized -> only affects db construction
-#else
   DBTYPE dbtype =
       hash; // type of db to be intialized -> only affects db construction
-#endif
   std::string chr;
   std::vector<std::string> chrs;
   INDEXTYPE indextype;
